@@ -61,8 +61,13 @@ map, and don't commit your client ID.
 python3 split_years.py 2016_to_2025.bin.gz --outdir data
 ```
 
-Commit `index.html` and `data/`, turn on Pages. Do not commit the big combined
-file or `cache/` — put both in `.gitignore`. GitHub refuses files over 100 MB
+Commit `index.html` and everything in `data/` — the per-year `.bin.gz` files are
+the site's data and the page is empty without them. What stays out of the repo is
+the big combined file and `cache/`; see the included `.gitignore`, and be careful
+with a blanket `*.bin.gz` pattern, which catches the per-year files too.
+
+Check with `git status --ignored` before pushing, or `git check-ignore -v
+data/lightning-2024.bin.gz` to see which rule is excluding something. GitHub refuses files over 100 MB
 outright and warns above 50 MB, and a visitor should never download a decade to
 look at one summer anyway.
 

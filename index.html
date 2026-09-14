@@ -279,6 +279,16 @@ async function gunzip(buf){
   return await new Response(s).arrayBuffer();
 }
 
+/* Decide from the first two bytes, not the file name. Some servers send a
+   .gz with Content-Encoding: gzip and the browser has already unwrapped it
+   by the time we look; others hand over the raw gzip stream. Either way the
+   magic number says which one happened. */
+async function maybeGunzip(buf){
+  const head = new Uint8Array(buf, 0, Math.min(2, buf.byteLength));
+  if(head[0] === 0x1f && head[1] === 0x8b) return await gunzip(buf);
+  return buf;
+}
+
 const dataStatus = document.getElementById('dataStatus');
 const yearsEl = document.getElementById('years');
 const loaded = new Map();     // key -> parsed chunk, kept so reselecting is free
@@ -345,8 +355,7 @@ async function syncYears(){
       try{
         const r = await fetch(entry.file);
         if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
-        let buf = await r.arrayBuffer();
-        if(entry.file.endsWith('.gz')) buf = await gunzip(buf);
+        const buf = await maybeGunzip(await r.arrayBuffer());
         loaded.set(key, parseBin(buf));
       }catch(err){
         dataStatus.textContent = 'Could not load ' + entry.file + ': ' + err.message;
@@ -398,8 +407,7 @@ document.getElementById('dataFile').onchange = async e=>{
   if(!f) return;
   dataStatus.textContent = 'Reading ' + f.name + '…';
   try{
-    let buf = await f.arrayBuffer();
-    if(f.name.toLowerCase().endsWith('.gz')) buf = await gunzip(buf);
+    const buf = await maybeGunzip(await f.arrayBuffer());
     loaded.set(f.name, parseBin(buf));
     yearsEl.querySelectorAll('input[type=checkbox]').forEach(b=> b.checked = false);
     const c = loaded.get(f.name);
