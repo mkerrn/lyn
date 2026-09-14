@@ -77,6 +77,13 @@
   .band button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px}
   .band button:hover{color:#ff9a8b}
 
+  #altRamp{
+    height:12px;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;
+    background:linear-gradient(to right,#0b1c2c,#22506e,#2f8f8a,#7fc4a0,#e3f2e7);
+  }
+  #altScale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+            font-variant-numeric:tabular-nums;margin-bottom:10px}
+
   .legend{display:flex;flex-direction:column;gap:4px}
   .legend .k{
     display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;
@@ -155,6 +162,10 @@
         <label for="ptOpacity">Point opacity</label>
       </div>
       <input type="range" id="ptOpacity" min="5" max="100" value="85">
+      <div class="row" style="margin-top:10px">
+        <label for="ptBright">Point brightness</label>
+      </div>
+      <input type="range" id="ptBright" min="-60" max="60" value="0">
     </section>
 
     <section>
@@ -204,19 +215,25 @@
     </section>
 
     <section>
-      <h2>Slope bands</h2>
+      <h2>Altitude</h2>
       <div class="row">
-        <input type="checkbox" id="slopeOn">
-        <label for="slopeOn">Shade terrain by steepness</label>
+        <input type="checkbox" id="altOn">
+        <label for="altOn">Shade terrain by height</label>
       </div>
-      <div id="bands"></div>
-      <div class="actions">
-        <button class="btn" id="addBand">Add class</button>
-        <button class="btn" id="applyBands">Redraw</button>
+      <div id="altLegend">
+        <div id="altRamp"></div>
+        <div id="altScale"><span id="altLo">—</span><span id="altHi">—</span></div>
       </div>
-      <div class="row" style="margin-top:12px"><label for="slopeOpacity">Slope opacity</label></div>
-      <input type="range" id="slopeOpacity" min="0" max="100" value="55">
-      <p class="note">Computed in your browser from open 10–30 m elevation tiles, the same way the ski map does it, so it is coarser than Kartverket's laser data and can be a few degrees out.</p>
+      <div class="row">
+        <input type="checkbox" id="altFix">
+        <label for="altFix">Fix the scale</label>
+        <input type="number" id="altMin" step="10" placeholder="min" disabled>
+        <input type="number" id="altMax" step="10" placeholder="max" disabled>
+      </div>
+      <div class="row" style="margin-top:12px"><label for="altOpacity">Terrain opacity</label></div>
+      <input type="range" id="altOpacity" min="0" max="100" value="60">
+      <p class="note">Unfixed, the ramp stretches to whatever is on screen: the lowest ground in view is dark blue, the highest is pale. Pan into a valley and it restretches, so colours mean different heights in different views. Fix the scale to compare one place against another.</p>
+      <p class="note">Blues and greens throughout, so the warm strike colours stay readable on top. Sea is left clear. Heights come from open 10–30 m elevation tiles, computed in your browser.</p>
     </section>
 
     <section>
@@ -264,6 +281,16 @@ const CLASSES = [
 ];
 const NCLASS = CLASSES.length;
 const classOn = CLASSES.map(()=>true);
+
+/* Brightness slider: mix each class colour toward white or black. Done once
+   per class per frame, not per strike. */
+function shade(hex, amt){
+  if(!amt) return hex;
+  let r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  const f = Math.abs(amt)/100, to = amt > 0 ? 255 : 0;
+  r = Math.round(r + (to-r)*f); g = Math.round(g + (to-g)*f); b = Math.round(b + (to-b)*f);
+  return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
 
 function classOf(kA){
   const a = Math.abs(kA);
@@ -656,6 +683,8 @@ const StrikeLayer = L.Layer.extend({
     const ptA  = +document.getElementById('ptOpacity').value/100;
     const r = z < 7 ? 1 : z < 10 ? 1.4 : z < 13 ? 2 : 2.6;
     const squares = drawn > 60000;
+    const bright = +document.getElementById('ptBright').value;
+    const paint = CLASSES.map(c=> shade(c.color, bright));
 
     const wx = D.wx, wy = D.wy, smaj = D.smaj, smin = D.smin, ang = D.ang;
 
@@ -666,7 +695,7 @@ const StrikeLayer = L.Layer.extend({
       for(let k=0;k<NCLASS;k++){
         if(!classOn[k]) continue;
         const g = groups[k]; if(!g || !g.length) continue;
-        ctx.strokeStyle = CLASSES[k].color;
+        ctx.strokeStyle = paint[k];
         for(let j=0;j<g.length;j+=ellStride){
           const i = g[j];
           const x = wx[i]*S - ox; if(x < -60 || x > W+60) continue;
@@ -685,7 +714,7 @@ const StrikeLayer = L.Layer.extend({
     for(let k=0;k<NCLASS;k++){
       if(!classOn[k]) continue;
       const g = groups[k]; if(!g || !g.length) continue;
-      ctx.fillStyle = CLASSES[k].color;
+      ctx.fillStyle = paint[k];
       if(squares){
         const d = r*1.7;
         for(let j=0;j<g.length;j++){
@@ -726,57 +755,38 @@ const StrikeLayer = L.Layer.extend({
 const strikes = new StrikeLayer();
 strikes.addTo(map);
 
-/* ---------- slope bands, computed from terrarium elevation tiles ---------- */
-/* Lifted from the ski map. Elevation tiles come down as RGB, get turned into
-   metres, differenced against their neighbours for a gradient, and painted
-   into the tile canvas. Colours are cool on purpose so they never compete
-   with the warm strike palette. */
-const DEFAULT_BANDS = [
-  {min:15, max:30, color:'#86c06c'},
-  {min:30, max:45, color:'#2f8f8a'},
-  {min:45, max:90, color:'#5b3f8f'}
+/* ---------- altitude shading from terrarium elevation tiles ---------- */
+/* Same tiles the ski map uses for slope, read as heights instead. The ramp is
+   blue through green to pale mint: nothing in it competes with the warm strike
+   palette, and sea is left transparent so the fjords still read. */
+const ALT_STOPS = [
+  [0.00, [ 11, 28, 44]],
+  [0.25, [ 34, 80,110]],
+  [0.50, [ 47,143,138]],
+  [0.75, [127,196,160]],
+  [1.00, [227,242,231]]
 ];
-let bands = JSON.parse(JSON.stringify(DEFAULT_BANDS));
-
-const bandsEl = document.getElementById('bands');
-function hexToRgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
-function renderBands(){
-  bandsEl.innerHTML = '';
-  bands.forEach((b,i)=>{
-    const row = document.createElement('div');
-    row.className = 'band';
-    row.innerHTML =
-      '<input type="number" min="0" max="90" step="1" value="'+b.min+'" data-k="min" data-i="'+i+'">' +
-      '<div class="dash">–</div>' +
-      '<input type="number" min="0" max="90" step="1" value="'+b.max+'" data-k="max" data-i="'+i+'">' +
-      '<input type="color" value="'+b.color+'" data-k="color" data-i="'+i+'">' +
-      '<button title="Remove" data-del="'+i+'">×</button>';
-    bandsEl.appendChild(row);
-  });
-}
-bandsEl.addEventListener('input', e=>{
-  const t = e.target, i = +t.dataset.i, k = t.dataset.k;
-  if(k===undefined) return;
-  bands[i][k] = (k==='color') ? t.value : (parseFloat(t.value)||0);
-});
-bandsEl.addEventListener('click', e=>{
-  const d = e.target.dataset.del;
-  if(d!==undefined){ bands.splice(+d,1); renderBands(); slope.redraw(); }
-});
-document.getElementById('addBand').onclick = ()=>{ bands.push({min:0,max:15,color:'#4fa35a'}); renderBands(); };
-renderBands();
+const ALT_LUT = (()=>{
+  const lut = new Uint8Array(256*3);
+  for(let i=0;i<256;i++){
+    const t = i/255;
+    let a = ALT_STOPS[0], b = ALT_STOPS[ALT_STOPS.length-1];
+    for(let j=0;j<ALT_STOPS.length-1;j++){
+      if(t >= ALT_STOPS[j][0] && t <= ALT_STOPS[j+1][0]){ a = ALT_STOPS[j]; b = ALT_STOPS[j+1]; break; }
+    }
+    const f = (b[0] - a[0]) ? (t - a[0])/(b[0] - a[0]) : 0;
+    for(let c=0;c<3;c++) lut[i*3+c] = Math.round(a[1][c] + f*(b[1][c] - a[1][c]));
+  }
+  return lut;
+})();
 
 const DEM_MAX_Z = 13;
 const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
-const slopeCache = new Map();
+const elevCache = new Map();
 
-function tileLat(z,y){
-  const n = Math.PI - 2*Math.PI*(y+0.5)/Math.pow(2,z);
-  return Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
-}
-function loadSlope(z,x,y){
+function loadElev(z,x,y){
   const key = z+'/'+x+'/'+y;
-  if(slopeCache.has(key)) return Promise.resolve(slopeCache.get(key));
+  if(elevCache.has(key)) return Promise.resolve(elevCache.get(key));
   const p = new Promise((resolve,reject)=>{
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -789,69 +799,139 @@ function loadSlope(z,x,y){
       catch(err){ reject(err); return; }
       const el = new Float32Array(256*256);
       for(let i=0;i<256*256;i++) el[i] = (d[i*4]*256 + d[i*4+1] + d[i*4+2]/256) - 32768;
-      const cell = 156543.03392 * Math.cos(tileLat(z,y)) / Math.pow(2,z);
-      const sl = new Float32Array(256*256);
-      const at = (px,py)=>el[Math.min(255,Math.max(0,py))*256 + Math.min(255,Math.max(0,px))];
-      for(let py=0;py<256;py++){
-        for(let px=0;px<256;px++){
-          const a=at(px-1,py-1), b=at(px,py-1), c2=at(px+1,py-1),
-                dd=at(px-1,py),              f=at(px+1,py),
-                g=at(px-1,py+1), h=at(px,py+1), i2=at(px+1,py+1);
-          const dzdx = ((c2 + 2*f + i2) - (a + 2*dd + g)) / (8*cell);
-          const dzdy = ((g + 2*h + i2) - (a + 2*b + c2)) / (8*cell);
-          sl[py*256+px] = Math.atan(Math.hypot(dzdx,dzdy)) * 180/Math.PI;
-        }
-      }
-      slopeCache.set(key, sl);
-      resolve(sl);
+      elevCache.set(key, el);
+      resolve(el);
     };
     img.onerror = ()=> reject(new Error('elevation tile failed'));
     img.src = DEM_URL.replace('{z}',z).replace('{x}',x).replace('{y}',y);
   });
+  elevCache.set(key, p);
   return p;
 }
 
-const SlopeLayer = L.GridLayer.extend({
+const AltLayer = L.GridLayer.extend({
+  initialize: function(opts){
+    L.setOptions(this, opts);
+    this._data = new Map();
+    this.on('tileunload', e=>{
+      this._data.delete(e.coords.z+'/'+e.coords.x+'/'+e.coords.y);
+      this._schedule();
+    });
+  },
+  onAdd: function(map){
+    L.GridLayer.prototype.onAdd.call(this, map);
+    map.on('moveend', this._schedule, this);
+  },
+  onRemove: function(map){
+    map.off('moveend', this._schedule, this);
+    L.GridLayer.prototype.onRemove.call(this, map);
+    this._data.clear();
+  },
   createTile: function(coords, done){
     const tile = document.createElement('canvas');
     tile.width = tile.height = 256;
-    const ctx = tile.getContext('2d');
     const dz = Math.max(0, coords.z - DEM_MAX_Z);
     const pz = coords.z - dz, px = coords.x >> dz, py = coords.y >> dz;
-
-    loadSlope(pz, px, py).then(sl=>{
-      const work = document.createElement('canvas'); work.width = work.height = 256;
-      const wc = work.getContext('2d');
-      const img = wc.createImageData(256,256);
-      const rgb = bands.map(b=>hexToRgb(b.color));
-      for(let i=0;i<256*256;i++){
-        const sv = sl[i];
-        let k = -1;
-        for(let j=0;j<bands.length;j++){ if(sv>=bands[j].min && sv<bands[j].max){ k=j; break; } }
-        if(k<0) continue;
-        img.data[i*4]   = rgb[k][0];
-        img.data[i*4+1] = rgb[k][1];
-        img.data[i*4+2] = rgb[k][2];
-        img.data[i*4+3] = 255;
-      }
-      wc.putImageData(img,0,0);
-      const sw = 256/Math.pow(2,dz);
-      const sx = (coords.x - (px<<dz))*sw, sy = (coords.y - (py<<dz))*sw;
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(work, sx, sy, sw, sw, 0, 0, 256, 256);
+    const sw = 256/Math.pow(2,dz);
+    const sx = (coords.x - (px<<dz))*sw, sy = (coords.y - (py<<dz))*sw;
+    loadElev(pz,px,py).then(el=>{
+      this._data.set(coords.z+'/'+coords.x+'/'+coords.y, {el, sx, sy, sw, tile});
+      this._schedule();
       done(null, tile);
-    }).catch(()=>{ done(null, tile); });
-
+    }).catch(()=> done(null, tile));
     return tile;
+  },
+
+  _schedule: function(){
+    if(this._pending) return;
+    this._pending = requestAnimationFrame(()=>{ this._pending = null; this.rescale(); });
+  },
+
+  /* The range is taken from the tiles actually on screen, so the ramp
+     restretches as you pan — the same behaviour as topographic-map.com. Sea
+     is excluded from the range, otherwise bathymetry would flatten the land
+     into the top few percent of the ramp. */
+  rescale: function(){
+    const fixed = document.getElementById('altFix').checked;
+    let lo, hi;
+    if(fixed){
+      lo = parseFloat(document.getElementById('altMin').value);
+      hi = parseFloat(document.getElementById('altMax').value);
+      if(isNaN(lo) || isNaN(hi) || hi <= lo){ lo = 0; hi = 2000; }
+    }else{
+      lo = Infinity; hi = -Infinity;
+      for(const d of this._data.values()){
+        const x1 = Math.ceil(d.sx + d.sw), y1 = Math.ceil(d.sy + d.sw);
+        for(let y=Math.floor(d.sy); y<y1; y+=2){
+          for(let x=Math.floor(d.sx); x<x1; x+=2){
+            const v = d.el[y*256+x];
+            if(v < -0.5) continue;
+            if(v < lo) lo = v;
+            if(v > hi) hi = v;
+          }
+        }
+      }
+      if(!isFinite(lo) || !isFinite(hi)){ lo = 0; hi = 1; }
+      if(hi - lo < 10) hi = lo + 10;
+    }
+    this._lo = lo; this._hi = hi;
+    document.getElementById('altLo').textContent = Math.round(lo) + ' m';
+    document.getElementById('altHi').textContent = Math.round(hi) + ' m';
+    if(!fixed){
+      document.getElementById('altMin').placeholder = Math.round(lo);
+      document.getElementById('altMax').placeholder = Math.round(hi);
+    }
+    for(const d of this._data.values()) this._paint(d);
+  },
+
+  _paint: function(d){
+    const lo = this._lo, span = this._hi - this._lo;
+    const work = document.createElement('canvas'); work.width = work.height = 256;
+    const wc = work.getContext('2d');
+    const img = wc.createImageData(256,256);
+    const out = img.data, el = d.el;
+    for(let i=0;i<256*256;i++){
+      const v = el[i];
+      if(v < -0.5) continue;                    // sea stays clear
+      let t = (v - lo)/span;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const k = (t*255)|0;
+      out[i*4]   = ALT_LUT[k*3];
+      out[i*4+1] = ALT_LUT[k*3+1];
+      out[i*4+2] = ALT_LUT[k*3+2];
+      out[i*4+3] = 255;
+    }
+    wc.putImageData(img,0,0);
+    const ctx = d.tile.getContext('2d');
+    ctx.clearRect(0,0,256,256);
+    ctx.imageSmoothingEnabled = d.sw < 256;
+    ctx.drawImage(work, d.sx, d.sy, d.sw, d.sw, 0, 0, 256, 256);
   }
 });
-const slope = new SlopeLayer({maxZoom:18, opacity:0.55, tileSize:256});
+const alt = new AltLayer({maxZoom:18, opacity:0.6, tileSize:256});
 
-document.getElementById('slopeOn').onchange = e=>{
-  if(e.target.checked) slope.addTo(map); else map.removeLayer(slope);
+document.getElementById('altOn').onchange = e=>{
+  if(e.target.checked) alt.addTo(map); else map.removeLayer(alt);
 };
-document.getElementById('applyBands').onclick = ()=> slope.redraw();
-document.getElementById('slopeOpacity').oninput = e=> slope.setOpacity(e.target.value/100);
+document.getElementById('altOpacity').oninput = e=> alt.setOpacity(e.target.value/100);
+document.getElementById('altFix').onchange = e=>{
+  const on = e.target.checked;
+  document.getElementById('altMin').disabled = !on;
+  document.getElementById('altMax').disabled = !on;
+  if(on){
+    /* Start the fixed range from whatever is on screen right now, so ticking
+       the box freezes the current look instead of jumping somewhere else. */
+    if(alt._lo !== undefined){
+      if(!document.getElementById('altMin').value) document.getElementById('altMin').value = Math.round(alt._lo);
+      if(!document.getElementById('altMax').value) document.getElementById('altMax').value = Math.round(alt._hi);
+    }
+  }
+  alt.rescale();
+};
+['altMin','altMax'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.oninput = ()=>{ clearTimeout(el._t); el._t = setTimeout(()=> alt.rescale(), 300); };
+});
 
 /* ---------- months ---------- */
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -971,6 +1051,11 @@ document.getElementById('pol').onchange = refilter;
 document.getElementById('ellOn').onchange = ()=> strikes.redraw();
 document.getElementById('ellOpacity').oninput = ()=> strikes.redraw();
 document.getElementById('ptOpacity').oninput = ()=> strikes.redraw();
+document.getElementById('ptBright').oninput = ()=>{
+  strikes.redraw();
+  const b = +document.getElementById('ptBright').value;
+  [...legendEl.querySelectorAll('.sw')].forEach((el,k)=> el.style.background = shade(CLASSES[k].color, b));
+};
 
 function setBase(key){
   Object.values(bases).forEach(l=>{ if(map.hasLayer(l)) map.removeLayer(l); });

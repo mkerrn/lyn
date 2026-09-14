@@ -99,10 +99,14 @@ stacked on one map. Jun–Aug and Nov–Feb presets are there because Norway has
 different lightning seasons — inland convection in late summer, and showers over
 the warm sea along the coast in autumn and winter.
 
-There is also a slope-band layer, off by default, the same browser-side terrain
-calculation the ski map uses. Default classes are 15–30°, 30–45° and 45°+, and
-they are editable. The colours are cool where the strike palette is warm, so the
-two can be read on top of each other.
+There is also an altitude layer, off by default, built from the same open
+elevation tiles the ski map uses for slope. By default the ramp stretches to
+whatever is on screen — lowest ground in view dark blue, highest pale mint — and
+restretches as you pan, which means a colour does not mean the same height in
+two different views. Tick "Fix the scale" and give it a range in metres to
+compare places. Sea is left transparent. The ramp is blue through green so the
+warm strike colours stay legible on top, and there is a brightness slider for the
+strikes themselves when the contrast still is not right.
 
 One thing the current filter cannot do is tell you which strikes were dangerous.
 See the note in the panel: peak current is an estimate, and every cloud-to-ground
