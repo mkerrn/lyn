@@ -113,6 +113,22 @@ See the note in the panel: peak current is an estimate, and every cloud-to-groun
 stroke is far past any human injury threshold. For "would this have hurt someone
 standing there", the filter is *cloud to ground*, with no current limit at all.
 
+## Looking for patterns
+
+Two tools for the question "where does it strike most", neither of which can be
+answered by looking at dots:
+
+**Density grid.** Counts per km² in cells of 1–50 km, log-scaled, rescaling to
+the strongest cell in view. If the points are sampled, counts are divided back
+up to estimate the full total.
+
+**Strikes by height.** Turn the altitude layer on, let the tiles load, press the
+button. It bins every elevation pixel on screen to get land area per 100 m band,
+bins the strikes the same way, and plots strikes per 1000 km² against height. A
+rising curve means altitude matters; a flat one means the effect is below the
+noise. Remember that MET's position error is a few hundred metres to a couple of
+kilometres, so this can show a regional trend but not a summit-versus-valley one.
+
 ## Sampling
 
 The panel has a cap on how many strikes are drawn — 150 000 by default. Past

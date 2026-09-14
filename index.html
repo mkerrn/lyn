@@ -84,6 +84,16 @@
   #altScale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
             font-variant-numeric:tabular-nums;margin-bottom:10px}
 
+  #densRamp{
+    height:12px;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;
+    background:linear-gradient(to right,rgba(242,193,78,.15),#f2c14e,#e2652f,#cf3038,#8f1d4e);
+  }
+  #densScale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
+             font-variant-numeric:tabular-nums;margin-bottom:8px}
+  #elevChart{margin:10px 0 4px}
+  #elevChart svg{width:100%;height:auto;display:block}
+  #elevChart .cap{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
+
   .legend{display:flex;flex-direction:column;gap:4px}
   .legend .k{
     display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;
@@ -183,6 +193,29 @@
     </section>
 
     <section>
+      <h2>Density grid</h2>
+      <div class="row">
+        <input type="checkbox" id="densOn">
+        <label for="densOn">Strikes per km² instead of points</label>
+      </div>
+      <div class="row">
+        <label for="densCell">Cell size</label>
+        <select id="densCell">
+          <option value="1">1 km</option>
+          <option value="5">5 km</option>
+          <option value="10" selected>10 km</option>
+          <option value="25">25 km</option>
+          <option value="50">50 km</option>
+        </select>
+      </div>
+      <div id="densLegend">
+        <div id="densRamp"></div>
+        <div id="densScale"><span>0</span><span id="densHi">—</span></div>
+      </div>
+      <p class="note">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view. If the points are sampled, the counts are divided back up to estimate the full total.</p>
+    </section>
+
+    <section>
       <h2>Uncertainty ellipses</h2>
       <div class="row">
         <input type="checkbox" id="ellOn" checked>
@@ -233,6 +266,10 @@
       <div class="row" style="margin-top:12px"><label for="altOpacity">Terrain opacity</label></div>
       <input type="range" id="altOpacity" min="0" max="100" value="60">
       <p class="note">Unfixed, the ramp stretches to whatever is on screen: the lowest ground in view is dark blue, the highest is pale. Pan into a valley and it restretches, so colours mean different heights in different views. Fix the scale to compare one place against another.</p>
+      <div class="actions">
+        <button class="btn" id="elevRun">Strikes by height, in this view</button>
+      </div>
+      <div id="elevChart"></div>
       <p class="note">Blues and greens throughout, so the warm strike colours stay readable on top. Sea is left clear. Heights come from open 10–30 m elevation tiles, computed in your browser.</p>
     </section>
 
@@ -655,6 +692,52 @@ const StrikeLayer = L.Layer.extend({
     if(this._frame) return;
     this._frame = requestAnimationFrame(()=>{ this._frame = null; this._draw(); });
   },
+  /* Bins into a lat/lon-independent mercator grid sized so a cell is the
+     requested number of kilometres at the centre of the view. Counts are
+     divided back up by the sampling fraction, so the numbers estimate the
+     whole filter rather than the drawn subset. */
+  _drawDensity: function(ctx, S, ox, oy, W, H, alpha){
+    const cellKm = +document.getElementById('densCell').value;
+    const latR = this._map.getCenter().lat*Math.PI/180;
+    const s = cellKm*1000/(40075016.686*Math.cos(latR));   // cell size in world units
+    const cells = new Map();
+    for(let k=0;k<NCLASS;k++){
+      if(!classOn[k]) continue;
+      const g = groups[k]; if(!g) continue;
+      for(let j=0;j<g.length;j++){
+        const i = g[j];
+        const cx = Math.floor(D.wx[i]/s), cy = Math.floor(D.wy[i]/s);
+        const px = cx*s*S - ox; if(px < -200 || px > W+200) continue;
+        const py = cy*s*S - oy; if(py < -200 || py > H+200) continue;
+        const key = cx*4194304 + cy;
+        cells.set(key, (cells.get(key)||0) + 1);
+      }
+    }
+    const areaKm2 = cellKm*cellKm;
+    const scale = (sampleFrac > 0 ? 1/sampleFrac : 1)/areaKm2;
+    let hi = 0;
+    for(const v of cells.values()) if(v > hi) hi = v;
+    const hiD = hi*scale;
+    document.getElementById('densHi').textContent =
+      hiD >= 10 ? Math.round(hiD) + ' /km²' : hiD.toFixed(hiD >= 1 ? 1 : 2) + ' /km²';
+    if(!cells.size) return;
+
+    /* Log scale: lightning density spans orders of magnitude, and a linear
+       ramp shows one bright cell over a storm track and nothing else. */
+    const px = s*S;
+    const lmax = Math.log1p(hi);
+    ctx.globalAlpha = alpha;
+    for(const [key, v] of cells){
+      const cx = Math.floor(key/4194304), cy = key - cx*4194304;
+      const t = lmax > 0 ? Math.log1p(v)/lmax : 1;
+      const k = Math.min(4, Math.floor(t*4.999));
+      ctx.fillStyle = CLASSES[k].color;
+      ctx.globalAlpha = alpha*(0.18 + 0.82*t);
+      ctx.fillRect(cx*s*S - ox, cy*s*S - oy, Math.ceil(px), Math.ceil(px));
+    }
+    ctx.globalAlpha = 1;
+  },
+
   _draw: function(){
     const m = this._map, c = this._canvas, ctx = c.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
@@ -678,7 +761,23 @@ const StrikeLayer = L.Layer.extend({
 
     let visible = 0, ellDrawn = 0, ellTiny = 0;
     const drawEll = document.getElementById('ellOn').checked;
-    const ellStride = Math.max(1, Math.ceil(drawn/ELLIPSE_BUDGET));
+
+    /* Count what is actually inside the viewport first. Budgeting against the
+       whole filter was the old behaviour and it was wrong: zooming into one
+       storm left the stride just as coarse as it was for the whole country,
+       so most strikes never got an ellipse however far you zoomed in. */
+    let onScreen = 0;
+    for(let k=0;k<NCLASS;k++){
+      if(!classOn[k]) continue;
+      const g = groups[k]; if(!g) continue;
+      for(let j=0;j<g.length;j++){
+        const i = g[j];
+        const x = D.wx[i]*S - ox; if(x < 0 || x > W) continue;
+        const y = D.wy[i]*S - oy; if(y < 0 || y > H) continue;
+        onScreen++;
+      }
+    }
+    const ellStride = Math.max(1, Math.ceil(onScreen/ELLIPSE_BUDGET));
     const ellA = +document.getElementById('ellOpacity').value/100;
     const ptA  = +document.getElementById('ptOpacity').value/100;
     const r = z < 7 ? 1 : z < 10 ? 1.4 : z < 13 ? 2 : 2.6;
@@ -689,6 +788,7 @@ const StrikeLayer = L.Layer.extend({
     const wx = D.wx, wy = D.wy, smaj = D.smaj, smin = D.smin, ang = D.ang;
 
     /* ellipses underneath, all classes, then the points on top */
+    let ellSeen = 0;
     if(drawEll){
       ctx.globalAlpha = ellA;
       ctx.lineWidth = 1;
@@ -696,10 +796,11 @@ const StrikeLayer = L.Layer.extend({
         if(!classOn[k]) continue;
         const g = groups[k]; if(!g || !g.length) continue;
         ctx.strokeStyle = paint[k];
-        for(let j=0;j<g.length;j+=ellStride){
+        for(let j=0;j<g.length;j++){
           const i = g[j];
           const x = wx[i]*S - ox; if(x < -60 || x > W+60) continue;
           const y = wy[i]*S - oy; if(y < -60 || y > H+60) continue;
+          if(ellStride > 1 && (ellSeen++ % ellStride)) continue;
           const rx = smaj[i]*0.1*kmPx, ry = smin[i]*0.1*kmPx;
           if(rx < 1.2){ ellTiny++; continue; }
           ellDrawn++;
@@ -708,6 +809,14 @@ const StrikeLayer = L.Layer.extend({
           ctx.stroke();
         }
       }
+    }
+
+    if(document.getElementById('densOn').checked){
+      this._drawDensity(ctx, S, ox, oy, W, H, ptA);
+      this._visible = onScreen;
+      updateReadout(onScreen);
+      document.getElementById('ellNote').textContent = '';
+      return;
     }
 
     ctx.globalAlpha = ptA;
@@ -747,8 +856,8 @@ const StrikeLayer = L.Layer.extend({
            'A typical error is a few hundred metres, so they appear around zoom 10 and ' +
            'are unmistakable past 12. The scale bar is your guide — zoom until it reads 1 km.';
     else if(drawEll && ellStride > 1)
-      en = 'Ellipses are thinned further, to every ' + ellStride + 'th drawn strike (' +
-           pct(sampleFrac/ellStride) + ' of the filter). Narrow the dates to see them all.';
+      en = 'Too many on screen to outline them all: showing every ' + ellStride +
+           'th. Zoom in and the rest appear.';
     document.getElementById('ellNote').textContent = en;
   }
 });
@@ -835,7 +944,7 @@ const AltLayer = L.GridLayer.extend({
     const sw = 256/Math.pow(2,dz);
     const sx = (coords.x - (px<<dz))*sw, sy = (coords.y - (py<<dz))*sw;
     loadElev(pz,px,py).then(el=>{
-      this._data.set(coords.z+'/'+coords.x+'/'+coords.y, {el, sx, sy, sw, tile});
+      this._data.set(coords.z+'/'+coords.x+'/'+coords.y, {el, sx, sy, sw, tile, coords, pz, px, py});
       this._schedule();
       done(null, tile);
     }).catch(()=> done(null, tile));
@@ -932,6 +1041,108 @@ document.getElementById('altFix').onchange = e=>{
   const el = document.getElementById(id);
   el.oninput = ()=>{ clearTimeout(el._t); el._t = setTimeout(()=> alt.rescale(), 300); };
 });
+
+/* ---------- strikes per unit area, by height ---------- */
+/* The question "does it strike summits more" cannot be answered by looking at
+   dots, because there is far more low ground than high ground. This bins the
+   elevation pixels on screen to get area per height band, bins the strikes the
+   same way, and divides. A rising curve means height matters. */
+const ELEV_BIN = 100;      // metres
+const ELEV_MAXB = 30;      // up to 3000 m
+
+function elevationResponse(){
+  const host = document.getElementById('elevChart');
+  if(!map.hasLayer(alt) || !alt._data.size){
+    host.innerHTML = '<p class="cap">Turn on the altitude layer first and let the tiles load — this reads the same elevation data.</p>';
+    return;
+  }
+  if(!D){ host.innerHTML = '<p class="cap">No strikes loaded.</p>'; return; }
+
+  const z = map.getZoom(), S = 256*Math.pow(2,z);
+  const origin = map.getPixelOrigin(), topLeft = map.containerPointToLayerPoint([0,0]);
+  const ox = origin.x + topLeft.x, oy = origin.y + topLeft.y;
+  const size = map.getSize();
+
+  const areaKm2 = new Float64Array(ELEV_MAXB);
+  const hits = new Float64Array(ELEV_MAXB);
+
+  /* area per band, from the elevation pixels of the tiles on screen */
+  for(const d of alt._data.values()){
+    const tx = d.coords.x*256 - ox, ty = d.coords.y*256 - oy;
+    if(tx > size.x || ty > size.y || tx + 256 < 0 || ty + 256 < 0) continue;
+    const n = Math.PI - 2*Math.PI*(d.py+0.5)/Math.pow(2,d.pz);
+    const lat = Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+    const mpp = 156543.03392*Math.cos(lat)/Math.pow(2,d.pz);
+    const pxKm2 = (mpp*mpp)/1e6;
+    const x1 = Math.ceil(d.sx + d.sw), y1 = Math.ceil(d.sy + d.sw);
+    for(let y=Math.floor(d.sy); y<y1; y++){
+      for(let x=Math.floor(d.sx); x<x1; x++){
+        const v = d.el[y*256+x];
+        if(v < -0.5) continue;
+        const b = Math.min(ELEV_MAXB-1, Math.floor(v/ELEV_BIN));
+        areaKm2[b] += pxKm2;
+      }
+    }
+  }
+
+  /* strikes per band, looked up in the same elevation tiles */
+  const pz = Math.min(z, DEM_MAX_Z), PS = 256*Math.pow(2,pz);
+  let counted = 0;
+  for(let k=0;k<NCLASS;k++){
+    if(!classOn[k]) continue;
+    const g = groups[k]; if(!g) continue;
+    for(let j=0;j<g.length;j++){
+      const i = g[j];
+      const sx = D.wx[i]*S - ox; if(sx < 0 || sx > size.x) continue;
+      const sy = D.wy[i]*S - oy; if(sy < 0 || sy > size.y) continue;
+      const X = D.wx[i]*PS, Y = D.wy[i]*PS;
+      const el = elevCache.get(pz+'/'+Math.floor(X/256)+'/'+Math.floor(Y/256));
+      if(!(el instanceof Float32Array)) continue;
+      const v = el[(Math.floor(Y)&255)*256 + (Math.floor(X)&255)];
+      if(v < -0.5) continue;
+      hits[Math.min(ELEV_MAXB-1, Math.floor(v/ELEV_BIN))]++;
+      counted++;
+    }
+  }
+
+  const up = sampleFrac > 0 ? 1/sampleFrac : 1;
+  let lastB = 0, totalArea = 0, best = 0;
+  const dens = new Float64Array(ELEV_MAXB);
+  for(let b=0;b<ELEV_MAXB;b++){
+    totalArea += areaKm2[b];
+    if(areaKm2[b] < 1) continue;            // too little land to mean anything
+    dens[b] = hits[b]*up/areaKm2[b]*1000;   // strikes per 1000 km²
+    if(dens[b] > best) best = dens[b];
+    lastB = b;
+  }
+  if(!counted || !best){
+    host.innerHTML = '<p class="cap">No strikes over land in this view, with the current filters.</p>';
+    return;
+  }
+
+  const rowH = 9, pad = 34, w = 260;
+  const h = (lastB+1)*rowH + 14;
+  let svg = '<svg viewBox="0 0 '+w+' '+h+'" xmlns="http://www.w3.org/2000/svg">';
+  for(let b=lastB;b>=0;b--){
+    const y = (lastB-b)*rowH;
+    const bw = areaKm2[b] < 1 ? 0 : (dens[b]/best)*(w-pad-4);
+    svg += '<rect x="'+pad+'" y="'+y+'" width="'+bw.toFixed(1)+'" height="'+(rowH-2)+'" fill="#e2652f" opacity="0.85"/>';
+    if(b % 5 === 0)
+      svg += '<text x="'+(pad-4)+'" y="'+(y+rowH-3)+'" text-anchor="end" font-size="8" fill="#93aab5">'+(b*ELEV_BIN)+'</text>';
+  }
+  svg += '<line x1="'+pad+'" y1="0" x2="'+pad+'" y2="'+((lastB+1)*rowH)+'" stroke="#2e4a58"/>';
+  svg += '<text x="'+pad+'" y="'+(h-3)+'" font-size="8" fill="#93aab5">0</text>';
+  svg += '<text x="'+(w-2)+'" y="'+(h-3)+'" text-anchor="end" font-size="8" fill="#93aab5">'+
+         Math.round(best).toLocaleString('en')+' per 1000 km²</text>';
+  svg += '</svg>';
+
+  host.innerHTML = svg +
+    '<p class="cap">Metres above sea level on the left. ' + counted.toLocaleString('en') +
+    ' strikes over ' + Math.round(totalArea).toLocaleString('en') + ' km² of land in view' +
+    (sampleFrac < 1 ? ', scaled up from a ' + pct(sampleFrac) + ' sample' : '') +
+    '. Bands with under 1 km² of land are left blank.</p>';
+}
+document.getElementById('elevRun').onclick = elevationResponse;
 
 /* ---------- months ---------- */
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1051,6 +1262,8 @@ document.getElementById('pol').onchange = refilter;
 document.getElementById('ellOn').onchange = ()=> strikes.redraw();
 document.getElementById('ellOpacity').oninput = ()=> strikes.redraw();
 document.getElementById('ptOpacity').oninput = ()=> strikes.redraw();
+document.getElementById('densOn').onchange = ()=> strikes.redraw();
+document.getElementById('densCell').onchange = ()=> strikes.redraw();
 document.getElementById('ptBright').oninput = ()=>{
   strikes.redraw();
   const b = +document.getElementById('ptBright').value;
