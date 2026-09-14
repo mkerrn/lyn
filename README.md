@@ -1,0 +1,113 @@
+# Lightning map
+
+A single-file Leaflet map of historical lightning strikes over Norway. Same
+shape as the slope map: one HTML file, no build step, no server.
+
+## Files
+
+- `index.html` — the map.
+- `fetch_lightning.py` — downloads UALF lightning from MET Norway's Frost API
+  and packs it into one `.bin.gz`.
+- `split_years.py` — cuts that file into one per year under `data/`, with an
+  `index.json` the map reads to build its year list.
+
+The map never loads the whole archive. It reads `data/index.json`, shows a
+checkbox per year, and downloads a year the first time you tick it.
+
+## Try it before you have data
+
+```
+python3 fetch_lightning.py --demo 200000 --out demo.bin.gz
+```
+
+Fake strikes in fake storm cells, to see the rendering. Load it with the file
+picker at the bottom of the panel. Serve the folder:
+
+```
+python3 -m http.server 8000
+```
+
+and open http://localhost:8000/. Opening `index.html` straight off the
+disk also works — the browser will refuse to fetch the data file over `file://`,
+but the file picker at the bottom of the panel loads it by hand.
+
+## Real data
+
+Get a Frost client ID (free, e-mail address only):
+https://frost.met.no/auth/requestCredentials.html
+
+```
+export FROST_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+python3 fetch_lightning.py --from 2024-01-01 --to 2024-12-31 --out lightning.bin.gz
+```
+
+One request per day, cached under `cache/`, so an interrupted run resumes and a
+rerun over the same dates costs nothing. A full year takes a while to pull the
+first time.
+
+Useful flags:
+
+- `--bbox west,south,east,north` — default is Norway plus the economic zone.
+- `--cg-only` — cloud-to-ground only, drops roughly a third of the records.
+- `--min-current 5` — drops the weakest strikes, which is the cheapest way to
+  thin a decade down to something a phone will draw.
+
+The data is MET Norway's, under NLOD / CC BY 4.0. Keep the attribution in the
+map, and don't commit your client ID.
+
+## Publishing
+
+```
+python3 split_years.py 2016_to_2025.bin.gz --outdir data
+```
+
+Commit `index.html` and `data/`, turn on Pages. Do not commit the big combined
+file or `cache/` — put both in `.gitignore`. GitHub refuses files over 100 MB
+outright and warns above 50 MB, and a visitor should never download a decade to
+look at one summer anyway.
+
+Git keeps every version of every file forever, so repack rarely. If you end up
+regenerating often, keep the data in its own repo or attach it to a release
+instead.
+
+## The binary format
+
+`LYN1`, little endian, sorted by time. Header of 32 bytes, then eight parallel
+arrays: `uint32` seconds since the header's epoch, `int32` latitude and
+longitude as degrees × 1e5, `int16` peak current in kA, `uint8` semi-major and
+semi-minor axes in units of 0.1 km, `uint8` ellipse angle in degrees, `uint8`
+flags with bit 0 set for cloud-to-cloud. 18 bytes per strike.
+
+Columnar rather than one record after another, because it gzips better and
+because the browser can then point a typed array straight at each column with no
+parsing at all. Sorted by time so the date filter is a binary search for a slice
+instead of a scan over everything.
+
+## Filters
+
+Date range, discharge type, peak current range in kA, polarity, and the legend
+classes, which toggle on click. All of them compose.
+
+One thing the current filter cannot do is tell you which strikes were dangerous.
+See the note in the panel: peak current is an estimate, and every cloud-to-ground
+stroke is far past any human injury threshold. For "would this have hurt someone
+standing there", the filter is *cloud to ground*, with no current limit at all.
+
+## Sampling
+
+The panel has a cap on how many strikes are drawn — 150 000 by default. Past
+that the map draws an even sample instead and says what fraction you are
+looking at, both in the panel and in the corner readout: *showing a 12 % sample*.
+
+The sample is every n-th record in time order, not the first n, so it is spread
+across the whole period and the whole map, and each current class is thinned by
+the same fraction so the legend's proportions still hold. Narrow the dates and
+the sampling switches itself off.
+
+Ellipses are thinned further, to 60 000, because a rotated ellipse costs many
+times what a dot does. The panel says when that is happening.
+
+A decade of Norwegian lightning is a few million strikes. That is fine to hold
+in memory — 18 bytes each plus the projection — but it is 30–50 MB compressed
+and slow over a phone connection. If it feels heavy, either pack one file per
+year and add a year picker, or thin at pack time with `--min-current`.

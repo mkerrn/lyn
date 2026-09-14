@@ -1,0 +1,85 @@
+{
+ "format": "LYN1",
+ "files": [
+  {
+   "year": 2016,
+   "file": "data/lightning-2016.bin.gz",
+   "n": 579686,
+   "bytes": 5347543,
+   "from": "2016-01-01",
+   "to": "2016-12-31"
+  },
+  {
+   "year": 2017,
+   "file": "data/lightning-2017.bin.gz",
+   "n": 175150,
+   "bytes": 1644550,
+   "from": "2017-01-01",
+   "to": "2017-12-30"
+  },
+  {
+   "year": 2018,
+   "file": "data/lightning-2018.bin.gz",
+   "n": 880780,
+   "bytes": 7823738,
+   "from": "2018-01-03",
+   "to": "2018-12-31"
+  },
+  {
+   "year": 2019,
+   "file": "data/lightning-2019.bin.gz",
+   "n": 1220780,
+   "bytes": 10497380,
+   "from": "2019-01-01",
+   "to": "2019-12-31"
+  },
+  {
+   "year": 2020,
+   "file": "data/lightning-2020.bin.gz",
+   "n": 704676,
+   "bytes": 6138370,
+   "from": "2020-01-02",
+   "to": "2020-12-26"
+  },
+  {
+   "year": 2021,
+   "file": "data/lightning-2021.bin.gz",
+   "n": 1447150,
+   "bytes": 12300676,
+   "from": "2021-01-01",
+   "to": "2021-12-31"
+  },
+  {
+   "year": 2022,
+   "file": "data/lightning-2022.bin.gz",
+   "n": 1613236,
+   "bytes": 13631589,
+   "from": "2022-01-01",
+   "to": "2022-12-31"
+  },
+  {
+   "year": 2023,
+   "file": "data/lightning-2023.bin.gz",
+   "n": 1187019,
+   "bytes": 9993965,
+   "from": "2023-01-01",
+   "to": "2023-12-28"
+  },
+  {
+   "year": 2024,
+   "file": "data/lightning-2024.bin.gz",
+   "n": 2131097,
+   "bytes": 17240183,
+   "from": "2024-01-14",
+   "to": "2024-12-31"
+  },
+  {
+   "year": 2025,
+   "file": "data/lightning-2025.bin.gz",
+   "n": 1767074,
+   "bytes": 15401682,
+   "from": "2025-01-02",
+   "to": "2025-12-31"
+  }
+ ]
+}

@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Lightning — historical strikes over Norway</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+  :root{
+    --ink:#0d1b22;
+    --paper:#f2efe6;
+    --panel:#12232c;
+    --panel-2:#1b3340;
+    --line:#2e4a58;
+    --text:#e8eef0;
+    --muted:#93aab5;
+    --snow:#cfe4ec;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:"Inter","Helvetica Neue",Arial,sans-serif;color:var(--text)}
+  #map{position:absolute;inset:0;background:var(--paper)}
+
+  #panel{
+    position:absolute;z-index:1000;top:12px;right:12px;width:310px;max-height:calc(100% - 24px);
+    overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+  #panel header{
+    display:flex;align-items:baseline;justify-content:space-between;gap:8px;
+    padding:12px 14px;border-bottom:1px solid var(--line);cursor:pointer;
+  }
+  #panel h1{margin:0;font-size:15px;font-weight:600;letter-spacing:.01em}
+  #panel header span{font-size:12px;color:var(--muted)}
+  #body{padding:12px 14px 16px}
+  #panel.closed #body{display:none}
+
+  section{margin-bottom:18px}
+  section:last-child{margin-bottom:0}
+  h2{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--snow)}
+  p.note{margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+  a{color:var(--snow)}
+
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px}
+  .row label{flex:1;cursor:pointer}
+  input[type=range]{width:100%;accent-color:var(--snow)}
+  input[type=date],select,input[type=number]{
+    padding:4px 6px;font-size:12px;background:var(--panel-2);color:var(--text);
+    border:1px solid var(--line);border-radius:3px;font-family:inherit;
+  }
+  input[type=number]{width:58px;flex:0 0 auto;font-variant-numeric:tabular-nums}
+  input[type=date]{flex:1;min-width:0}
+  input[type=file]{font-size:11px;color:var(--muted);width:100%}
+  input[type=file]::file-selector-button{
+    padding:4px 8px;margin-right:8px;font-size:11px;background:var(--panel-2);color:var(--text);
+    border:1px solid var(--line);border-radius:3px;cursor:pointer;
+  }
+  .btn{
+    padding:5px 10px;font-size:12px;background:var(--panel-2);color:var(--text);
+    border:1px solid var(--line);border-radius:3px;cursor:pointer;
+  }
+  .btn:hover{background:#264556}
+  .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+  .legend{display:flex;flex-direction:column;gap:4px}
+  .legend .k{
+    display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;
+    padding:2px 3px;border-radius:3px;user-select:none;
+  }
+  .legend .k:hover{background:var(--panel-2)}
+  .legend .k.off{opacity:.35}
+  .legend .sw{width:22px;height:10px;border-radius:2px;flex:0 0 auto}
+  .legend .k span.n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px}
+
+  #readout{
+    position:absolute;z-index:1000;left:12px;bottom:24px;padding:7px 11px;font-size:12.5px;
+    background:rgba(18,35,44,.92);border:1px solid var(--line);border-radius:4px;max-width:calc(100% - 24px);
+  }
+  #readout b{font-weight:600;font-variant-numeric:tabular-nums}
+  .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px}
+  .leaflet-popup-tip{background:var(--panel);border:1px solid var(--line)}
+  .leaflet-popup-content{margin:10px 12px;font-size:12px;line-height:1.6}
+  .leaflet-popup-content b{font-variant-numeric:tabular-nums}
+  .leaflet-control-attribution{font-size:10px}
+  @media (max-width:640px){
+    #panel{left:12px;right:12px;width:auto}
+    #readout{font-size:12px;bottom:20px}
+  }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="readout">Loading strikes…</div>
+
+<div id="panel">
+  <header id="panelHead"><h1>Lightning</h1><span id="toggleHint">hide</span></header>
+  <div id="body">
+
+    <section>
+      <h2>Period</h2>
+      <div class="row">
+        <input type="date" id="dFrom">
+        <input type="date" id="dTo">
+      </div>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" id="allTime">Whole archive</button>
+        <button class="btn" id="lastYear">Last 12 months</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Discharge type</h2>
+      <div class="row"><input type="radio" name="typ" id="t-all" checked><label for="t-all">Both</label></div>
+      <div class="row"><input type="radio" name="typ" id="t-cg"><label for="t-cg">Cloud to ground</label></div>
+      <div class="row"><input type="radio" name="typ" id="t-cc"><label for="t-cc">Cloud to cloud</label></div>
+      <div class="row" style="margin-top:12px">
+        <label for="ptOpacity">Point opacity</label>
+      </div>
+      <input type="range" id="ptOpacity" min="5" max="100" value="85">
+    </section>
+
+    <section>
+      <h2>How much to draw</h2>
+      <div class="row">
+        <label for="cap">Draw at most</label>
+        <select id="cap">
+          <option value="50000">50 000 strikes</option>
+          <option value="150000" selected>150 000 strikes</option>
+          <option value="400000">400 000 strikes</option>
+          <option value="0">everything</option>
+        </select>
+      </div>
+      <p class="note" id="sampleNote"></p>
+    </section>
+
+    <section>
+      <h2>Uncertainty ellipses</h2>
+      <div class="row">
+        <input type="checkbox" id="ellOn" checked>
+        <label for="ellOn">Draw location error ellipse</label>
+      </div>
+      <input type="range" id="ellOpacity" min="2" max="60" value="14">
+      <p class="note">The reported 50 % confidence ellipse: semi-major and semi-minor axis in kilometres, rotated to the reported angle. Faint on purpose so a hundred of them stacked on one storm cell still show where the network was sure and where it was guessing.</p>
+      <p class="note" id="ellNote"></p>
+    </section>
+
+    <section>
+      <h2>Peak current</h2>
+      <div class="row">
+        <label for="iMin" style="flex:0 0 auto">Keep |kA| from</label>
+        <input type="number" id="iMin" min="0" max="500" step="1" placeholder="0">
+        <label for="iMax" style="flex:0 0 auto">to</label>
+        <input type="number" id="iMax" min="0" max="500" step="1" placeholder="any">
+      </div>
+      <div class="row">
+        <label for="pol">Polarity</label>
+        <select id="pol">
+          <option value="all" selected>both</option>
+          <option value="neg">negative only</option>
+          <option value="pos">positive only</option>
+        </select>
+      </div>
+      <div class="legend" id="legend"></div>
+      <p class="note">Absolute value of the peak current in kA. Click a class to hide it, or type a range above. Negative strokes are the ordinary kind; positive ones are rarer, often stronger, and carry more charge.</p>
+      <p class="note">Peak current is an estimate from the sensor network, easily 20 % out on any single stroke, and it is not a danger threshold. Every cloud-to-ground stroke in this file is thousands of times more current than a heart can take. What current changes is how far the hazard reaches from the attachment point, not whether there is one.</p>
+    </section>
+
+    <section>
+      <h2>Base map</h2>
+      <div class="row"><input type="radio" name="base" id="b-kv" checked><label for="b-kv">Kartverket topo</label></div>
+      <div class="row"><input type="radio" name="base" id="b-otm"><label for="b-otm">OpenTopoMap</label></div>
+    </section>
+
+    <section>
+      <h2>Years</h2>
+      <div id="years"></div>
+      <p class="note" id="dataStatus">…</p>
+      <p class="note">Each year is downloaded the first time you tick it and kept after that. Ticking several at once is what makes the tab heavy, so add them one at a time.</p>
+      <input type="file" id="dataFile" accept=".bin,.gz">
+      <p class="note">Or open a LYN1 file from disk. Nothing is uploaded anywhere; it is read in your browser.</p>
+    </section>
+
+    <section style="border-top:1px solid var(--line);padding-top:12px">
+      <p class="note">Lightning data © Meteorologisk institutt, distributed under NLOD / CC BY 4.0, detected by the Nordic lightning network. Positions are triangulated, not observed: a point can be a kilometre or more from where the flash actually hit, which is what the ellipse is telling you. Detection efficiency is lower for cloud-to-cloud than for cloud-to-ground, and lower everywhere far offshore.</p>
+      <p class="note">Base maps © Kartverket and © OpenTopoMap / OpenStreetMap contributors.</p>
+    </section>
+
+  </div>
+</div>
+
+<script>
+/* ---------------------------------------------------------------
+   The manifest listing one file per year, written by split_years.py.
+   Relative to this page, so on GitHub Pages the data/ folder sits
+   next to index.html.
+   --------------------------------------------------------------- */
+const INDEX_URL = 'data/index.json';
+
+/* A rotated ellipse costs many times what a dot does, so ellipses are
+   thinned further than the points are, and the panel says by how much. */
+const ELLIPSE_BUDGET = 60000;
+
+/* ---------- peak current classes ---------- */
+const CLASSES = [
+  {max:10,   color:'#f2c14e', label:'under 10 kA'},
+  {max:25,   color:'#f09030', label:'10 – 25 kA'},
+  {max:50,   color:'#e2652f', label:'25 – 50 kA'},
+  {max:100,  color:'#cf3038', label:'50 – 100 kA'},
+  {max:1e9,  color:'#8f1d4e', label:'100 kA and up'}
+];
+const NCLASS = CLASSES.length;
+const classOn = CLASSES.map(()=>true);
+
+function classOf(kA){
+  const a = Math.abs(kA);
+  for(let i=0;i<NCLASS;i++) if(a < CLASSES[i].max) return i;
+  return NCLASS-1;
+}
+
+/* ---------- map ---------- */
+const bases = {
+  kv: L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+      {maxZoom:18, attribution:'© Kartverket'}),
+  otm: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      {maxZoom:17, attribution:'© OpenTopoMap, OpenStreetMap contributors'})
+};
+const map = L.map('map', {center:[64.2, 12.0], zoom:5, layers:[bases.kv], zoomControl:true,
+                          preferCanvas:true, attributionControl:true});
+map.attributionControl.addAttribution('Lightning © MET Norway');
+
+/* ---------- the dataset ---------- */
+/* Struct of arrays, sorted by time. Kept as typed arrays so a few
+   hundred thousand strikes cost a few megabytes instead of a few
+   hundred, and so a redraw is a tight numeric loop. */
+let D = null;      // {n, t, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0}
+let groups = [];   // per current class: Int32Array of indices passing the filter
+let filtered = 0;   // strikes passing the date, type and class filters
+let drawn = 0;      // how many of those survive the sampling cap
+let sampleFrac = 1;
+
+/* Timestamps inside a file are seconds from that file's own epoch. On the
+   way in they become absolute unix seconds, so chunks from different years
+   can be concatenated without touching the time column again. */
+function parseBin(buf){
+  const dv = new DataView(buf);
+  const magic = String.fromCharCode(dv.getUint8(0),dv.getUint8(1),dv.getUint8(2),dv.getUint8(3));
+  if(magic !== 'LYN1') throw new Error('not a LYN1 file');
+  const n  = dv.getUint32(4, true);
+  const t0 = dv.getUint32(8, true);
+  let o = 32;
+  const t    = new Uint32Array(buf, o, n); o += 4*n;
+  const lat  = new Int32Array (buf, o, n); o += 4*n;
+  const lon  = new Int32Array (buf, o, n); o += 4*n;
+  const peak = new Int16Array (buf, o, n); o += 2*n;
+  const smaj = new Uint8Array (buf, o, n); o += n;
+  const smin = new Uint8Array (buf, o, n); o += n;
+  const ang  = new Uint8Array (buf, o, n); o += n;
+  const flag = new Uint8Array (buf, o, n); o += n;
+  for(let i=0;i<n;i++) t[i] += t0;
+
+  /* Project once, here, into normalised web mercator (0–1 across the
+     world). A redraw is then one multiply and one subtract per strike
+     instead of a trigonometric projection. */
+  const wx = new Float64Array(n), wy = new Float64Array(n);
+  for(let i=0;i<n;i++){
+    const la = lat[i]/1e5, lo = lon[i]/1e5;
+    const s = Math.sin(la*Math.PI/180);
+    wx[i] = (lo+180)/360;
+    wy[i] = 0.5 - Math.log((1+s)/(1-s))/(4*Math.PI);
+  }
+  return {n, t, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0:0};
+}
+
+async function gunzip(buf){
+  if(typeof DecompressionStream === 'undefined')
+    throw new Error('this browser cannot unzip; use the uncompressed .bin');
+  const s = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(s).arrayBuffer();
+}
+
+const dataStatus = document.getElementById('dataStatus');
+const yearsEl = document.getElementById('years');
+const loaded = new Map();     // key -> parsed chunk, kept so reselecting is free
+let manifest = null;
+let firstFit = true;
+
+/* Concatenating is a copy, but it happens once per selection change rather
+   than once per frame, and it keeps every loop downstream working on one
+   flat array. */
+function merge(chunks){
+  chunks = chunks.slice().sort((a,b)=> a.t[0] - b.t[0]);
+  if(chunks.length === 1) return chunks[0];
+  const n = chunks.reduce((s,c)=> s + c.n, 0);
+  const out = {
+    n, t0:0,
+    t:new Uint32Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
+    peak:new Int16Array(n), smaj:new Uint8Array(n), smin:new Uint8Array(n),
+    ang:new Uint8Array(n), flag:new Uint8Array(n),
+    wx:new Float64Array(n), wy:new Float64Array(n)
+  };
+  let o = 0;
+  for(const c of chunks){
+    for(const k of ['t','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
+    o += c.n;
+  }
+  return out;
+}
+
+function useChunks(chunks){
+  if(!chunks.length){
+    D = null; groups = []; filtered = drawn = 0;
+    strikes.redraw();
+    readout.textContent = 'No years selected';
+    return;
+  }
+  D = merge(chunks);
+  const a = new Date(D.t[0]*1000), b = new Date(D.t[D.n-1]*1000);
+  const lo = a.toISOString().slice(0,10), hi = b.toISOString().slice(0,10);
+  const from = document.getElementById('dFrom'), to = document.getElementById('dTo');
+  from.min = to.min = lo; from.max = to.max = hi;
+  if(!from.value || from.value < lo || from.value > hi) from.value = lo;
+  if(!to.value   || to.value   < lo || to.value   > hi) to.value   = hi;
+  refilter();
+  if(firstFit){
+    firstFit = false;
+    let mnLa=90, mxLa=-90, mnLo=180, mxLo=-180;
+    const step = Math.max(1, Math.floor(D.n/20000));
+    for(let i=0;i<D.n;i+=step){
+      const la=D.lat[i]/1e5, lo2=D.lon[i]/1e5;
+      if(la<mnLa)mnLa=la; if(la>mxLa)mxLa=la; if(lo2<mnLo)mnLo=lo2; if(lo2>mxLo)mxLo=lo2;
+    }
+    if(mnLa<=mxLa) map.fitBounds([[mnLa-0.3,mnLo-0.3],[mxLa+0.3,mxLo+0.3]]);
+  }
+}
+
+async function syncYears(){
+  const boxes = [...yearsEl.querySelectorAll('input[type=checkbox]')];
+  const want = boxes.filter(b=>b.checked).map(b=>b.value);
+  const missing = want.filter(k=> !loaded.has(k));
+  if(missing.length){
+    dataStatus.textContent = 'Loading ' + missing.join(', ') + '…';
+    for(const key of missing){
+      const entry = manifest.files.find(f=> String(f.year) === key);
+      try{
+        const r = await fetch(entry.file);
+        if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
+        let buf = await r.arrayBuffer();
+        if(entry.file.endsWith('.gz')) buf = await gunzip(buf);
+        loaded.set(key, parseBin(buf));
+      }catch(err){
+        dataStatus.textContent = 'Could not load ' + entry.file + ': ' + err.message;
+        boxes.find(b=>b.value===key).checked = false;
+        return;
+      }
+    }
+  }
+  const chunks = want.map(k=> loaded.get(k));
+  const n = chunks.reduce((s,c)=> s + c.n, 0);
+  dataStatus.textContent = want.length
+    ? want.length + (want.length===1 ? ' year, ' : ' years, ') + n.toLocaleString('en') + ' strikes in memory.'
+    : 'No years selected.';
+  useChunks(chunks);
+}
+
+function buildYearList(){
+  yearsEl.innerHTML = '';
+  manifest.files.forEach((f,idx)=>{
+    const row = document.createElement('div');
+    row.className = 'row';
+    const id = 'y'+f.year;
+    row.innerHTML = '<input type="checkbox" id="'+id+'" value="'+f.year+'"'+
+      (idx === manifest.files.length-1 ? ' checked' : '')+'>' +
+      '<label for="'+id+'">'+f.year+'</label>' +
+      '<span style="color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums">'+
+      (f.n/1000).toFixed(0)+'k · '+(f.bytes/1e6).toFixed(0)+' MB</span>';
+    row.querySelector('input').onchange = syncYears;
+    yearsEl.appendChild(row);
+  });
+}
+
+(async function boot(){
+  try{
+    const r = await fetch(INDEX_URL);
+    if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
+    manifest = await r.json();
+    buildYearList();
+    await syncYears();
+  }catch(err){
+    dataStatus.textContent = 'No ' + INDEX_URL + ' found (' + err.message +
+      '). Pick a .bin or .bin.gz file below instead.';
+    readout.textContent = 'Choose a data file in the panel';
+  }
+})();
+
+document.getElementById('dataFile').onchange = async e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  dataStatus.textContent = 'Reading ' + f.name + '…';
+  try{
+    let buf = await f.arrayBuffer();
+    if(f.name.toLowerCase().endsWith('.gz')) buf = await gunzip(buf);
+    loaded.set(f.name, parseBin(buf));
+    yearsEl.querySelectorAll('input[type=checkbox]').forEach(b=> b.checked = false);
+    const c = loaded.get(f.name);
+    dataStatus.textContent = f.name + ': ' + c.n.toLocaleString('en') + ' strikes.';
+    useChunks([c]);
+  }catch(err){ dataStatus.textContent = 'Could not read that file: ' + err.message; }
+};
+
+/* ---------- filtering ---------- */
+/* The file is sorted by time, so the date range is a binary search for
+   a slice, not a scan. Everything else is one pass that buckets the
+   survivors by current class, which lets the draw loop set a colour
+   once per class instead of once per strike. */
+function lowerBound(t, v){
+  let lo=0, hi=t.length;
+  while(lo<hi){ const m=(lo+hi)>>1; if(t[m]<v) lo=m+1; else hi=m; }
+  return lo;
+}
+function typeMode(){
+  return document.getElementById('t-cg').checked ? 'cg'
+       : document.getElementById('t-cc').checked ? 'cc' : 'all';
+}
+function refilter(){
+  if(!D) return;
+  const fv = document.getElementById('dFrom').value, tv = document.getElementById('dTo').value;
+  const from = fv ? Date.parse(fv+'T00:00:00Z')/1000 - D.t0 : -Infinity;
+  const to   = tv ? Date.parse(tv+'T00:00:00Z')/1000 + 86400 - D.t0 : Infinity;
+  const i0 = from===-Infinity ? 0   : lowerBound(D.t, from);
+  const i1 = to===Infinity    ? D.n : lowerBound(D.t, to);
+  const mode = typeMode();
+  const iMinV = parseFloat(document.getElementById('iMin').value);
+  const iMaxV = parseFloat(document.getElementById('iMax').value);
+  const iMin = isNaN(iMinV) ? 0 : iMinV;
+  const iMax = isNaN(iMaxV) ? Infinity : iMaxV;
+  const pol  = document.getElementById('pol').value;
+
+  const counts = new Int32Array(NCLASS);
+  const cls = new Uint8Array(i1-i0);
+  for(let i=i0;i<i1;i++){
+    const cloud = D.flag[i] & 1;
+    if(mode==='cg' && cloud) { cls[i-i0]=255; continue; }
+    if(mode==='cc' && !cloud){ cls[i-i0]=255; continue; }
+    const pk = D.peak[i];
+    if(pol==='neg' && pk >= 0){ cls[i-i0]=255; continue; }
+    if(pol==='pos' && pk <= 0){ cls[i-i0]=255; continue; }
+    const a = pk < 0 ? -pk : pk;
+    if(a < iMin || a > iMax){ cls[i-i0]=255; continue; }
+    const k = classOf(pk);
+    cls[i-i0] = k; counts[k]++;
+  }
+  filtered = 0;
+  for(let k=0;k<NCLASS;k++) if(classOn[k]) filtered += counts[k];
+
+  /* Too many to draw: keep an even sample instead of the first N. The file
+     is in time order, so taking every n-th record spreads the sample across
+     the whole period and over the whole map. Each current class is thinned
+     by the same fraction, so the legend's proportions still hold. */
+  const cap = +document.getElementById('cap').value || Infinity;
+  const frac = filtered > cap ? cap/filtered : 1;
+
+  const keep = new Int32Array(NCLASS), step = new Float64Array(NCLASS);
+  groups = [];
+  for(let k=0;k<NCLASS;k++){
+    keep[k] = classOn[k] ? (frac >= 1 ? counts[k] : Math.min(counts[k], Math.max(1, Math.round(counts[k]*frac)))) : 0;
+    if(!counts[k]) keep[k] = 0;
+    step[k] = keep[k] ? counts[k]/keep[k] : 1;
+    groups.push(new Int32Array(keep[k]));
+  }
+  const fill = new Int32Array(NCLASS), pos = new Int32Array(NCLASS);
+  for(let i=i0;i<i1;i++){
+    const k = cls[i-i0];
+    if(k===255) continue;
+    const p = pos[k]++;
+    if(fill[k] < keep[k] && p >= Math.floor(fill[k]*step[k])) groups[k][fill[k]++] = i;
+  }
+  drawn = 0;
+  for(let k=0;k<NCLASS;k++) drawn += fill[k];
+  sampleFrac = filtered ? drawn/filtered : 1;
+
+  document.getElementById('sampleNote').textContent = sampleFrac < 1
+    ? 'Showing a ' + pct(sampleFrac) + ' sample: ' + drawn.toLocaleString('en') +
+      ' of ' + filtered.toLocaleString('en') + ' strikes in the filter, spread evenly ' +
+      'across the period. Narrow the dates to see every one.'
+    : (filtered ? 'Showing all ' + filtered.toLocaleString('en') + ' strikes in the filter.' : '');
+
+  renderLegend(counts);
+  strikes.redraw();
+}
+
+function pct(f){
+  const p = f*100;
+  return (p >= 10 ? p.toFixed(0) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + ' %';
+}
+
+/* ---------- legend ---------- */
+const legendEl = document.getElementById('legend');
+function renderLegend(counts){
+  legendEl.innerHTML = '';
+  CLASSES.forEach((c,k)=>{
+    const d = document.createElement('div');
+    d.className = 'k' + (classOn[k] ? '' : ' off');
+    d.innerHTML = '<div class="sw" style="background:'+c.color+'"></div>' +
+                  '<label>'+c.label+'</label>' +
+                  '<span class="n">'+(counts ? counts[k].toLocaleString('en') : '')+'</span>';
+    d.onclick = ()=>{
+      classOn[k] = !classOn[k];
+      refilter();
+    };
+    legendEl.appendChild(d);
+  });
+}
+renderLegend(null);
+
+/* ---------- the strike layer ---------- */
+/* One canvas over the map pane. Leaflet's own vector layers make a DOM
+   object per feature and fall over somewhere around ten thousand; this
+   draws straight to a bitmap, so the cost is the loop, not the DOM. */
+const StrikeLayer = L.Layer.extend({
+  onAdd: function(map){
+    this._map = map;
+    const c = this._canvas = L.DomUtil.create('canvas', 'leaflet-zoom-animated');
+    c.style.pointerEvents = 'none';
+    map.getPanes().overlayPane.appendChild(c);
+    map.on('moveend zoomend resize', this._reset, this);
+    if(map.options.zoomAnimation && L.Browser.any3d) map.on('zoomanim', this._animateZoom, this);
+    this._reset();
+  },
+  onRemove: function(map){
+    L.DomUtil.remove(this._canvas);
+    map.off('moveend zoomend resize', this._reset, this);
+    map.off('zoomanim', this._animateZoom, this);
+  },
+  _animateZoom: function(e){
+    const scale = this._map.getZoomScale(e.zoom);
+    const off = this._map._latLngBoundsToNewLayerBounds(this._map.getBounds(), e.zoom, e.center).min;
+    L.DomUtil.setTransform(this._canvas, off, scale);
+  },
+  _reset: function(){
+    const m = this._map, size = m.getSize(), c = this._canvas;
+    const dpr = window.devicePixelRatio || 1;
+    L.DomUtil.setTransform(this._canvas, L.point(0,0), 1);
+    L.DomUtil.setPosition(c, m.containerPointToLayerPoint([0,0]));
+    if(c.width !== Math.round(size.x*dpr) || c.height !== Math.round(size.y*dpr)){
+      c.width = Math.round(size.x*dpr); c.height = Math.round(size.y*dpr);
+      c.style.width = size.x+'px'; c.style.height = size.y+'px';
+    }
+    this.redraw();
+  },
+  redraw: function(){
+    if(!this._canvas) return;
+    if(this._frame) return;
+    this._frame = requestAnimationFrame(()=>{ this._frame = null; this._draw(); });
+  },
+  _draw: function(){
+    const m = this._map, c = this._canvas, ctx = c.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const size = m.getSize();
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,size.x,size.y);
+    if(!D) return;
+
+    const z = m.getZoom();
+    const S = 256 * Math.pow(2, z);                 // world width in pixels
+    const origin = m.getPixelOrigin();
+    const topLeft = m.containerPointToLayerPoint([0,0]);
+    const ox = origin.x + topLeft.x, oy = origin.y + topLeft.y;
+    const W = size.x, H = size.y;
+
+    /* Kilometres to pixels depends on latitude. One factor for the whole
+       view, taken at the centre: across a screenful the error is small,
+       and when it is not you are zoomed far enough out that the ellipses
+       are sub-pixel and switched off anyway. */
+    const kmPx = 1000 * Math.pow(2,z) / (156543.03392 * Math.cos(m.getCenter().lat*Math.PI/180));
+
+    let visible = 0;
+    const drawEll = document.getElementById('ellOn').checked;
+    const ellStride = Math.max(1, Math.ceil(drawn/ELLIPSE_BUDGET));
+    const ellA = +document.getElementById('ellOpacity').value/100;
+    const ptA  = +document.getElementById('ptOpacity').value/100;
+    const r = z < 7 ? 1 : z < 10 ? 1.4 : z < 13 ? 2 : 2.6;
+    const squares = drawn > 60000;
+
+    const wx = D.wx, wy = D.wy, smaj = D.smaj, smin = D.smin, ang = D.ang;
+
+    /* ellipses underneath, all classes, then the points on top */
+    if(drawEll){
+      ctx.globalAlpha = ellA;
+      ctx.lineWidth = 1;
+      for(let k=0;k<NCLASS;k++){
+        if(!classOn[k]) continue;
+        const g = groups[k]; if(!g || !g.length) continue;
+        ctx.strokeStyle = CLASSES[k].color;
+        for(let j=0;j<g.length;j+=ellStride){
+          const i = g[j];
+          const x = wx[i]*S - ox; if(x < -60 || x > W+60) continue;
+          const y = wy[i]*S - oy; if(y < -60 || y > H+60) continue;
+          const rx = smaj[i]*0.1*kmPx, ry = smin[i]*0.1*kmPx;
+          if(rx < 1.2) continue;
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, Math.max(ry,0.4), (ang[i]-90)*Math.PI/180, 0, 6.28318530718);
+          ctx.stroke();
+        }
+      }
+    }
+
+    ctx.globalAlpha = ptA;
+    for(let k=0;k<NCLASS;k++){
+      if(!classOn[k]) continue;
+      const g = groups[k]; if(!g || !g.length) continue;
+      ctx.fillStyle = CLASSES[k].color;
+      if(squares){
+        const d = r*1.7;
+        for(let j=0;j<g.length;j++){
+          const i = g[j];
+          const x = wx[i]*S - ox; if(x < 0 || x > W) continue;
+          const y = wy[i]*S - oy; if(y < 0 || y > H) continue;
+          visible++;
+          ctx.fillRect(x-d/2, y-d/2, d, d);
+        }
+      }else{
+        ctx.beginPath();
+        for(let j=0;j<g.length;j++){
+          const i = g[j];
+          const x = wx[i]*S - ox; if(x < 0 || x > W) continue;
+          const y = wy[i]*S - oy; if(y < 0 || y > H) continue;
+          visible++;
+          ctx.moveTo(x+r, y);
+          ctx.arc(x, y, r, 0, 6.28318530718);
+        }
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+
+    this._visible = visible;
+    updateReadout(visible);
+    document.getElementById('ellNote').textContent =
+      drawEll && ellStride > 1
+        ? 'Ellipses are thinned further, to every ' + ellStride + 'th drawn strike (' +
+          pct(sampleFrac/ellStride) + ' of the filter). Narrow the dates to see them all.'
+        : '';
+  }
+});
+const strikes = new StrikeLayer();
+strikes.addTo(map);
+
+/* ---------- readout ---------- */
+const readout = document.getElementById('readout');
+function updateReadout(visible){
+  if(!D){ readout.textContent = 'Choose a data file in the panel'; return; }
+  readout.innerHTML = '<b>' + visible.toLocaleString('en') + '</b> on screen · <b>' +
+    filtered.toLocaleString('en') + '</b> in filter' +
+    (sampleFrac < 1 ? ' · showing a <b>' + pct(sampleFrac) + '</b> sample' : '') +
+    ' · tap a strike';
+}
+
+/* ---------- click to inspect ---------- */
+map.on('click', e=>{
+  if(!D) return;
+  const z = map.getZoom(), S = 256*Math.pow(2,z);
+  const p = map.project(e.latlng, z);
+  let best = -1, bestD = 12*12;
+  for(let k=0;k<NCLASS;k++){
+    if(!classOn[k]) continue;
+    const g = groups[k]; if(!g) continue;
+    for(let j=0;j<g.length;j++){
+      const i = g[j];
+      const dx = D.wx[i]*S - p.x; if(dx > 12 || dx < -12) continue;
+      const dy = D.wy[i]*S - p.y; if(dy > 12 || dy < -12) continue;
+      const d2 = dx*dx + dy*dy;
+      if(d2 < bestD){ bestD = d2; best = i; }
+    }
+  }
+  if(best < 0) return;
+  const i = best;
+  const when = new Date((D.t0 + D.t[i])*1000);
+  const ms = String(when.getUTCMilliseconds()).padStart(3,'0');
+  L.popup({closeButton:true})
+    .setLatLng([D.lat[i]/1e5, D.lon[i]/1e5])
+    .setContent(
+      '<b>' + when.toISOString().slice(0,19).replace('T',' ') + '.' + ms + '</b> UTC<br>' +
+      (D.peak[i] < 0 ? 'Negative ' : 'Positive ') + '<b>' + Math.abs(D.peak[i]) + ' kA</b> · ' +
+      ((D.flag[i]&1) ? 'cloud to cloud' : 'cloud to ground') + '<br>' +
+      'Error ellipse <b>' + (D.smaj[i]/10).toFixed(1) + ' × ' + (D.smin[i]/10).toFixed(1) +
+      ' km</b> at <b>' + D.ang[i] + '°</b><br>' +
+      D.lat[i]/1e5 + ', ' + D.lon[i]/1e5
+    ).openOn(map);
+});
+
+/* ---------- controls ---------- */
+document.getElementById('panelHead').onclick = ()=>{
+  const p = document.getElementById('panel');
+  p.classList.toggle('closed');
+  document.getElementById('toggleHint').textContent = p.classList.contains('closed') ? 'show' : 'hide';
+};
+document.getElementById('dFrom').onchange = refilter;
+document.getElementById('dTo').onchange = refilter;
+document.getElementById('allTime').onclick = ()=>{
+  if(!D) return;
+  document.getElementById('dFrom').value = new Date((D.t0+D.t[0])*1000).toISOString().slice(0,10);
+  document.getElementById('dTo').value   = new Date((D.t0+D.t[D.n-1])*1000).toISOString().slice(0,10);
+  refilter();
+};
+document.getElementById('lastYear').onclick = ()=>{
+  if(!D) return;
+  const end = new Date((D.t0+D.t[D.n-1])*1000);
+  const start = new Date(end); start.setUTCFullYear(end.getUTCFullYear()-1);
+  document.getElementById('dFrom').value = start.toISOString().slice(0,10);
+  document.getElementById('dTo').value   = end.toISOString().slice(0,10);
+  refilter();
+};
+['t-all','t-cg','t-cc'].forEach(id=> document.getElementById(id).onchange = refilter);
+document.getElementById('cap').onchange = refilter;
+['iMin','iMax'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.onchange = refilter;
+  el.oninput = ()=>{ clearTimeout(el._t); el._t = setTimeout(refilter, 350); };
+});
+document.getElementById('pol').onchange = refilter;
+document.getElementById('ellOn').onchange = ()=> strikes.redraw();
+document.getElementById('ellOpacity').oninput = ()=> strikes.redraw();
+document.getElementById('ptOpacity').oninput = ()=> strikes.redraw();
+
+function setBase(key){
+  Object.values(bases).forEach(l=>{ if(map.hasLayer(l)) map.removeLayer(l); });
+  bases[key].addTo(map);
+  bases[key].bringToBack();
+}
+document.getElementById('b-kv').onchange = ()=>setBase('kv');
+document.getElementById('b-otm').onchange = ()=>setBase('otm');
+</script>
+</body>
+</html>
