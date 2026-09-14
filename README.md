@@ -90,8 +90,19 @@ instead of a scan over everything.
 
 ## Filters
 
-Date range, discharge type, peak current range in kA, polarity, and the legend
-classes, which toggle on click. All of them compose.
+Date range, months, discharge type, peak current range in kA, polarity, and the
+legend classes, which toggle on click. All of them compose.
+
+The month toggles cut across the date range rather than narrowing it: leave the
+range at the full archive, tick June and July only, and you get ten summers
+stacked on one map. Jun–Aug and Nov–Feb presets are there because Norway has two
+different lightning seasons — inland convection in late summer, and showers over
+the warm sea along the coast in autumn and winter.
+
+There is also a slope-band layer, off by default, the same browser-side terrain
+calculation the ski map uses. Default classes are 15–30°, 30–45° and 45°+, and
+they are editable. The colours are cool where the strike palette is warm, so the
+two can be read on top of each other.
 
 One thing the current filter cannot do is tell you which strikes were dangerous.
 See the note in the panel: peak current is an estimate, and every cloud-to-ground

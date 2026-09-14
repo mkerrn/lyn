@@ -62,6 +62,21 @@
   .btn:hover{background:#264556}
   .actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 
+  .months{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-bottom:8px}
+  .months button{
+    padding:5px 0;font-size:11px;background:var(--panel-2);color:var(--text);
+    border:1px solid var(--line);border-radius:3px;cursor:pointer;
+  }
+  .months button.off{opacity:.3}
+  .months button:hover{border-color:var(--snow)}
+
+  .band{display:grid;grid-template-columns:44px 10px 44px 1fr 24px;gap:6px;align-items:center;margin-bottom:6px}
+  .band input[type=number]{width:100%;padding:4px 5px}
+  .band .dash{text-align:center;color:var(--muted);font-size:12px}
+  .band input[type=color]{width:100%;height:24px;padding:0;border:1px solid var(--line);border-radius:3px;background:none}
+  .band button{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:2px}
+  .band button:hover{color:#ff9a8b}
+
   .legend{display:flex;flex-direction:column;gap:4px}
   .legend .k{
     display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;
@@ -72,9 +87,19 @@
   .legend .sw{width:22px;height:10px;border-radius:2px;flex:0 0 auto}
   .legend .k span.n{margin-left:auto;color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px}
 
+  #corner{position:absolute;z-index:1000;left:12px;bottom:24px;max-width:calc(100% - 24px)}
   #readout{
-    position:absolute;z-index:1000;left:12px;bottom:24px;padding:7px 11px;font-size:12.5px;
-    background:rgba(18,35,44,.92);border:1px solid var(--line);border-radius:4px;max-width:calc(100% - 24px);
+    padding:7px 11px;font-size:12.5px;
+    background:rgba(18,35,44,.92);border:1px solid var(--line);border-radius:4px;
+  }
+  #scale{
+    display:inline-flex;align-items:flex-end;gap:7px;margin-bottom:6px;padding:5px 9px 4px;
+    font-size:11px;font-variant-numeric:tabular-nums;color:var(--text);
+    background:rgba(18,35,44,.92);border:1px solid var(--line);border-radius:4px;
+  }
+  #scaleBar{
+    height:6px;width:40px;box-sizing:border-box;
+    border:1px solid var(--snow);border-top:none;transition:width .12s linear;
   }
   #readout b{font-weight:600;font-variant-numeric:tabular-nums}
   .leaflet-popup-content-wrapper{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:4px}
@@ -84,14 +109,18 @@
   .leaflet-control-attribution{font-size:10px}
   @media (max-width:640px){
     #panel{left:12px;right:12px;width:auto}
-    #readout{font-size:12px;bottom:20px}
+    #corner{bottom:20px}
+    #readout{font-size:12px}
   }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
-<div id="readout">Loading strikes…</div>
+<div id="corner">
+  <div id="scale"><div id="scaleBar"></div><span id="scaleLabel">—</span></div>
+  <div id="readout">Loading strikes…</div>
+</div>
 
 <div id="panel">
   <header id="panelHead"><h1>Lightning</h1><span id="toggleHint">hide</span></header>
@@ -107,6 +136,14 @@
         <button class="btn" id="allTime">Whole archive</button>
         <button class="btn" id="lastYear">Last 12 months</button>
       </div>
+      <h2 style="margin:14px 0 8px">Months</h2>
+      <div class="months" id="months"></div>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" id="mAll">All</button>
+        <button class="btn" id="mSummer">Jun–Aug</button>
+        <button class="btn" id="mWinter">Nov–Feb</button>
+      </div>
+      <p class="note">Cuts across years: leave the range at 2016–2025 and tick only June and July to stack ten summers on one map.</p>
     </section>
 
     <section>
@@ -140,7 +177,7 @@
         <input type="checkbox" id="ellOn" checked>
         <label for="ellOn">Draw location error ellipse</label>
       </div>
-      <input type="range" id="ellOpacity" min="2" max="60" value="14">
+      <input type="range" id="ellOpacity" min="2" max="60" value="25">
       <p class="note">The reported 50 % confidence ellipse: semi-major and semi-minor axis in kilometres, rotated to the reported angle. Faint on purpose so a hundred of them stacked on one storm cell still show where the network was sure and where it was guessing.</p>
       <p class="note" id="ellNote"></p>
     </section>
@@ -164,6 +201,22 @@
       <div class="legend" id="legend"></div>
       <p class="note">Absolute value of the peak current in kA. Click a class to hide it, or type a range above. Negative strokes are the ordinary kind; positive ones are rarer, often stronger, and carry more charge.</p>
       <p class="note">Peak current is an estimate from the sensor network, easily 20 % out on any single stroke, and it is not a danger threshold. Every cloud-to-ground stroke in this file is thousands of times more current than a heart can take. What current changes is how far the hazard reaches from the attachment point, not whether there is one.</p>
+    </section>
+
+    <section>
+      <h2>Slope bands</h2>
+      <div class="row">
+        <input type="checkbox" id="slopeOn">
+        <label for="slopeOn">Shade terrain by steepness</label>
+      </div>
+      <div id="bands"></div>
+      <div class="actions">
+        <button class="btn" id="addBand">Add class</button>
+        <button class="btn" id="applyBands">Redraw</button>
+      </div>
+      <div class="row" style="margin-top:12px"><label for="slopeOpacity">Slope opacity</label></div>
+      <input type="range" id="slopeOpacity" min="0" max="100" value="55">
+      <p class="note">Computed in your browser from open 10–30 m elevation tiles, the same way the ski map does it, so it is coarser than Kartverket's laser data and can be a few degrees out.</p>
     </section>
 
     <section>
@@ -259,6 +312,19 @@ function parseBin(buf){
   const flag = new Uint8Array (buf, o, n); o += n;
   for(let i=0;i<n;i++) t[i] += t0;
 
+  /* Which month each strike falls in, worked out by walking month boundaries
+     through the sorted time column rather than making n Date objects. */
+  const mon = new Uint8Array(n);
+  if(n){
+    const d0 = new Date(t[0]*1000);
+    let y = d0.getUTCFullYear(), m = d0.getUTCMonth(), i = 0;
+    while(i < n){
+      const end = Date.UTC(y, m+1, 1)/1000;
+      while(i < n && t[i] < end){ mon[i] = m; i++; }
+      if(++m > 11){ m = 0; y++; }
+    }
+  }
+
   /* Project once, here, into normalised web mercator (0–1 across the
      world). A redraw is then one multiply and one subtract per strike
      instead of a trigonometric projection. */
@@ -269,7 +335,7 @@ function parseBin(buf){
     wx[i] = (lo+180)/360;
     wy[i] = 0.5 - Math.log((1+s)/(1-s))/(4*Math.PI);
   }
-  return {n, t, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0:0};
+  return {n, t, mon, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0:0};
 }
 
 async function gunzip(buf){
@@ -304,14 +370,14 @@ function merge(chunks){
   const n = chunks.reduce((s,c)=> s + c.n, 0);
   const out = {
     n, t0:0,
-    t:new Uint32Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
+    t:new Uint32Array(n), mon:new Uint8Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
     peak:new Int16Array(n), smaj:new Uint8Array(n), smin:new Uint8Array(n),
     ang:new Uint8Array(n), flag:new Uint8Array(n),
     wx:new Float64Array(n), wy:new Float64Array(n)
   };
   let o = 0;
   for(const c of chunks){
-    for(const k of ['t','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
+    for(const k of ['t','mon','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
     o += c.n;
   }
   return out;
@@ -447,6 +513,7 @@ function refilter(){
   const counts = new Int32Array(NCLASS);
   const cls = new Uint8Array(i1-i0);
   for(let i=i0;i<i1;i++){
+    if(!monthOn[D.mon[i]]){ cls[i-i0]=255; continue; }
     const cloud = D.flag[i] & 1;
     if(mode==='cg' && cloud) { cls[i-i0]=255; continue; }
     if(mode==='cc' && !cloud){ cls[i-i0]=255; continue; }
@@ -582,7 +649,7 @@ const StrikeLayer = L.Layer.extend({
        are sub-pixel and switched off anyway. */
     const kmPx = 1000 * Math.pow(2,z) / (156543.03392 * Math.cos(m.getCenter().lat*Math.PI/180));
 
-    let visible = 0;
+    let visible = 0, ellDrawn = 0, ellTiny = 0;
     const drawEll = document.getElementById('ellOn').checked;
     const ellStride = Math.max(1, Math.ceil(drawn/ELLIPSE_BUDGET));
     const ellA = +document.getElementById('ellOpacity').value/100;
@@ -605,7 +672,8 @@ const StrikeLayer = L.Layer.extend({
           const x = wx[i]*S - ox; if(x < -60 || x > W+60) continue;
           const y = wy[i]*S - oy; if(y < -60 || y > H+60) continue;
           const rx = smaj[i]*0.1*kmPx, ry = smin[i]*0.1*kmPx;
-          if(rx < 1.2) continue;
+          if(rx < 1.2){ ellTiny++; continue; }
+          ellDrawn++;
           ctx.beginPath();
           ctx.ellipse(x, y, rx, Math.max(ry,0.4), (ang[i]-90)*Math.PI/180, 0, 6.28318530718);
           ctx.stroke();
@@ -644,15 +712,187 @@ const StrikeLayer = L.Layer.extend({
 
     this._visible = visible;
     updateReadout(visible);
-    document.getElementById('ellNote').textContent =
-      drawEll && ellStride > 1
-        ? 'Ellipses are thinned further, to every ' + ellStride + 'th drawn strike (' +
-          pct(sampleFrac/ellStride) + ' of the filter). Narrow the dates to see them all.'
-        : '';
+    let en = '';
+    if(drawEll && ellDrawn === 0 && ellTiny > 0)
+      en = 'Nothing to see yet: at this zoom the ellipses are under a pixel across. ' +
+           'A typical error is a few hundred metres, so they appear around zoom 10 and ' +
+           'are unmistakable past 12. The scale bar is your guide — zoom until it reads 1 km.';
+    else if(drawEll && ellStride > 1)
+      en = 'Ellipses are thinned further, to every ' + ellStride + 'th drawn strike (' +
+           pct(sampleFrac/ellStride) + ' of the filter). Narrow the dates to see them all.';
+    document.getElementById('ellNote').textContent = en;
   }
 });
 const strikes = new StrikeLayer();
 strikes.addTo(map);
+
+/* ---------- slope bands, computed from terrarium elevation tiles ---------- */
+/* Lifted from the ski map. Elevation tiles come down as RGB, get turned into
+   metres, differenced against their neighbours for a gradient, and painted
+   into the tile canvas. Colours are cool on purpose so they never compete
+   with the warm strike palette. */
+const DEFAULT_BANDS = [
+  {min:15, max:30, color:'#86c06c'},
+  {min:30, max:45, color:'#2f8f8a'},
+  {min:45, max:90, color:'#5b3f8f'}
+];
+let bands = JSON.parse(JSON.stringify(DEFAULT_BANDS));
+
+const bandsEl = document.getElementById('bands');
+function hexToRgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+function renderBands(){
+  bandsEl.innerHTML = '';
+  bands.forEach((b,i)=>{
+    const row = document.createElement('div');
+    row.className = 'band';
+    row.innerHTML =
+      '<input type="number" min="0" max="90" step="1" value="'+b.min+'" data-k="min" data-i="'+i+'">' +
+      '<div class="dash">–</div>' +
+      '<input type="number" min="0" max="90" step="1" value="'+b.max+'" data-k="max" data-i="'+i+'">' +
+      '<input type="color" value="'+b.color+'" data-k="color" data-i="'+i+'">' +
+      '<button title="Remove" data-del="'+i+'">×</button>';
+    bandsEl.appendChild(row);
+  });
+}
+bandsEl.addEventListener('input', e=>{
+  const t = e.target, i = +t.dataset.i, k = t.dataset.k;
+  if(k===undefined) return;
+  bands[i][k] = (k==='color') ? t.value : (parseFloat(t.value)||0);
+});
+bandsEl.addEventListener('click', e=>{
+  const d = e.target.dataset.del;
+  if(d!==undefined){ bands.splice(+d,1); renderBands(); slope.redraw(); }
+});
+document.getElementById('addBand').onclick = ()=>{ bands.push({min:0,max:15,color:'#4fa35a'}); renderBands(); };
+renderBands();
+
+const DEM_MAX_Z = 13;
+const DEM_URL = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+const slopeCache = new Map();
+
+function tileLat(z,y){
+  const n = Math.PI - 2*Math.PI*(y+0.5)/Math.pow(2,z);
+  return Math.atan(0.5*(Math.exp(n)-Math.exp(-n)));
+}
+function loadSlope(z,x,y){
+  const key = z+'/'+x+'/'+y;
+  if(slopeCache.has(key)) return Promise.resolve(slopeCache.get(key));
+  const p = new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = ()=>{
+      const c = document.createElement('canvas'); c.width = c.height = 256;
+      const cx = c.getContext('2d', {willReadFrequently:true});
+      cx.drawImage(img,0,0,256,256);
+      let d;
+      try { d = cx.getImageData(0,0,256,256).data; }
+      catch(err){ reject(err); return; }
+      const el = new Float32Array(256*256);
+      for(let i=0;i<256*256;i++) el[i] = (d[i*4]*256 + d[i*4+1] + d[i*4+2]/256) - 32768;
+      const cell = 156543.03392 * Math.cos(tileLat(z,y)) / Math.pow(2,z);
+      const sl = new Float32Array(256*256);
+      const at = (px,py)=>el[Math.min(255,Math.max(0,py))*256 + Math.min(255,Math.max(0,px))];
+      for(let py=0;py<256;py++){
+        for(let px=0;px<256;px++){
+          const a=at(px-1,py-1), b=at(px,py-1), c2=at(px+1,py-1),
+                dd=at(px-1,py),              f=at(px+1,py),
+                g=at(px-1,py+1), h=at(px,py+1), i2=at(px+1,py+1);
+          const dzdx = ((c2 + 2*f + i2) - (a + 2*dd + g)) / (8*cell);
+          const dzdy = ((g + 2*h + i2) - (a + 2*b + c2)) / (8*cell);
+          sl[py*256+px] = Math.atan(Math.hypot(dzdx,dzdy)) * 180/Math.PI;
+        }
+      }
+      slopeCache.set(key, sl);
+      resolve(sl);
+    };
+    img.onerror = ()=> reject(new Error('elevation tile failed'));
+    img.src = DEM_URL.replace('{z}',z).replace('{x}',x).replace('{y}',y);
+  });
+  return p;
+}
+
+const SlopeLayer = L.GridLayer.extend({
+  createTile: function(coords, done){
+    const tile = document.createElement('canvas');
+    tile.width = tile.height = 256;
+    const ctx = tile.getContext('2d');
+    const dz = Math.max(0, coords.z - DEM_MAX_Z);
+    const pz = coords.z - dz, px = coords.x >> dz, py = coords.y >> dz;
+
+    loadSlope(pz, px, py).then(sl=>{
+      const work = document.createElement('canvas'); work.width = work.height = 256;
+      const wc = work.getContext('2d');
+      const img = wc.createImageData(256,256);
+      const rgb = bands.map(b=>hexToRgb(b.color));
+      for(let i=0;i<256*256;i++){
+        const sv = sl[i];
+        let k = -1;
+        for(let j=0;j<bands.length;j++){ if(sv>=bands[j].min && sv<bands[j].max){ k=j; break; } }
+        if(k<0) continue;
+        img.data[i*4]   = rgb[k][0];
+        img.data[i*4+1] = rgb[k][1];
+        img.data[i*4+2] = rgb[k][2];
+        img.data[i*4+3] = 255;
+      }
+      wc.putImageData(img,0,0);
+      const sw = 256/Math.pow(2,dz);
+      const sx = (coords.x - (px<<dz))*sw, sy = (coords.y - (py<<dz))*sw;
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(work, sx, sy, sw, sw, 0, 0, 256, 256);
+      done(null, tile);
+    }).catch(()=>{ done(null, tile); });
+
+    return tile;
+  }
+});
+const slope = new SlopeLayer({maxZoom:18, opacity:0.55, tileSize:256});
+
+document.getElementById('slopeOn').onchange = e=>{
+  if(e.target.checked) slope.addTo(map); else map.removeLayer(slope);
+};
+document.getElementById('applyBands').onclick = ()=> slope.redraw();
+document.getElementById('slopeOpacity').oninput = e=> slope.setOpacity(e.target.value/100);
+
+/* ---------- months ---------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const monthOn = MONTHS.map(()=> true);
+const monthsEl = document.getElementById('months');
+function renderMonths(){
+  monthsEl.innerHTML = '';
+  MONTHS.forEach((name,m)=>{
+    const b = document.createElement('button');
+    b.textContent = name;
+    b.className = monthOn[m] ? '' : 'off';
+    b.onclick = ()=>{ monthOn[m] = !monthOn[m]; renderMonths(); refilter(); };
+    monthsEl.appendChild(b);
+  });
+}
+function setMonths(list){
+  for(let m=0;m<12;m++) monthOn[m] = list.includes(m);
+  renderMonths(); refilter();
+}
+renderMonths();
+document.getElementById('mAll').onclick    = ()=> setMonths([0,1,2,3,4,5,6,7,8,9,10,11]);
+document.getElementById('mSummer').onclick = ()=> setMonths([5,6,7]);
+document.getElementById('mWinter').onclick = ()=> setMonths([10,11,0,1]);
+
+/* ---------- scale bar ---------- */
+/* Snaps to one of five round distances: the largest that still fits inside
+   the readout box below it. */
+const SCALE_STEPS = [10, 100, 1000, 10000, 100000];
+const scaleBar = document.getElementById('scaleBar');
+const scaleLabel = document.getElementById('scaleLabel');
+function updateScale(){
+  const mpp = 156543.03392 * Math.cos(map.getCenter().lat*Math.PI/180) / Math.pow(2, map.getZoom());
+  const box = document.getElementById('readout').offsetWidth || 220;
+  const maxW = Math.max(40, box - 20);          // room for the chip's own padding
+  let pick = SCALE_STEPS[0];
+  for(const s of SCALE_STEPS) if(s/mpp <= maxW) pick = s;
+  scaleBar.style.width = Math.round(Math.min(maxW, pick/mpp)) + 'px';
+  scaleLabel.textContent = pick >= 1000 ? (pick/1000) + ' km' : pick + ' m';
+}
+map.on('move zoomend resize', updateScale);
+updateScale();
 
 /* ---------- readout ---------- */
 const readout = document.getElementById('readout');
@@ -662,6 +902,7 @@ function updateReadout(visible){
     filtered.toLocaleString('en') + '</b> in filter' +
     (sampleFrac < 1 ? ' · showing a <b>' + pct(sampleFrac) + '</b> sample' : '') +
     ' · tap a strike';
+  updateScale();
 }
 
 /* ---------- click to inspect ---------- */
