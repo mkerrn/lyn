@@ -1,11 +1,19 @@
 # Lightning map
 
-A single-file Leaflet map of historical lightning strikes over Norway. Same
-shape as the slope map: one HTML file, no build step, no server.
+A Leaflet map of historical lightning strikes over Norway. Plain HTML, CSS
+and JS: no build step, no server.
 
 ## Files
 
-- `index.html` — the map.
+- `index.html` — the panel markup; loads the stylesheet and scripts.
+- `css/style.css` — all the styling.
+- `js/` — classic scripts sharing one global scope, loaded in this order:
+  - `map.js` — map and base layers, current classes, `shade`, `pct`.
+  - `data.js` — LYN1 parsing, gunzip, merging years, the year list.
+  - `filter.js` — `refilter()`: dates, months, type, current, legend → `groups`.
+  - `strikes.js` — the canvas layer: points, ellipses, density, sampling.
+  - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
+  - `ui.js` — scale bar, readout, click popup, control wiring, boot.
 - `fetch_lightning.py` — downloads UALF lightning from MET Norway's Frost API
   and packs it into one `.bin.gz`.
 - `split_years.py` — cuts that file into one per year under `data/`, with an
@@ -127,8 +135,9 @@ Two tools for the question "where does it strike most", neither of which can be
 answered by looking at dots:
 
 **Density grid.** Counts per km² in cells of 1–50 km, log-scaled, rescaling to
-the strongest cell in view. If the points are sampled, counts are divided back
-up to estimate the full total.
+the strongest cell in view. It counts every strike in the filter, never the
+drawn sample. Cells smaller than a pixel are widened until they are not, and the
+panel says so.
 
 **Strikes by height.** Turn the altitude layer on, let the tiles load, press the
 button. It bins every elevation pixel on screen to get land area per 100 m band,
@@ -139,14 +148,18 @@ kilometres, so this can show a regional trend but not a summit-versus-valley one
 
 ## Sampling
 
-The panel has a cap on how many strikes are drawn — 150 000 by default. Past
-that the map draws an even sample instead and says what fraction you are
-looking at, both in the panel and in the corner readout: *showing a 12 % sample*.
+The panel has a cap on how many strikes are drawn — 150 000 by default — and it
+counts only what is on screen. Zoom into one valley and every strike there is
+drawn, whatever the date range; zoom out over the whole country and the map
+draws an even sample instead and says what fraction you are looking at, both in
+the panel and in the corner readout: *showing a 12 % sample*.
 
-The sample is every n-th record in time order, not the first n, so it is spread
-across the whole period and the whole map, and each current class is thinned by
-the same fraction so the legend's proportions still hold. Narrow the dates and
-the sampling switches itself off.
+A strike is kept when a hash of its index falls under that fraction. That
+spreads the sample across the whole period and the whole view, thins each
+current class by the same fraction so the legend's proportions still hold, and
+is stable: a strike drawn at one zoom is still drawn when you zoom in. The
+density grid and the strikes-by-height chart ignore the cap and use every
+strike in the filter.
 
 Ellipses are thinned further, to 60 000, because a rotated ellipse costs many
 times what a dot does. The panel says when that is happening.
