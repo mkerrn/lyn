@@ -275,7 +275,7 @@
 
     <section>
       <h2>Base map</h2>
-      <div class="row"><input type="radio" name="base" id="b-kv" checked><label for="b-kv">Kartverket topo</label></div>
+      <div class="row"><input type="radio" name="base" id="b-kv" checked><label for="b-kv">Kartverket topo, OpenTopoMap outside Norway</label></div>
       <div class="row"><input type="radio" name="base" id="b-otm"><label for="b-otm">OpenTopoMap</label></div>
     </section>
 
@@ -336,11 +336,20 @@ function classOf(kA){
 }
 
 /* ---------- map ---------- */
+/* Kartverket's tiles are transparent outside Norway, and the network
+   reaches well into Sweden and Finland, so the Kartverket base sits on
+   top of OpenTopoMap, which fills in everything across the border.
+   Explicit z-indexes keep both under the altitude layer. */
+const OTM_URL = 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+const OTM_OPTS = {maxZoom:18, maxNativeZoom:17, zIndex:-2,
+                  attribution:'© OpenTopoMap, OpenStreetMap contributors'};
 const bases = {
-  kv: L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
-      {maxZoom:18, attribution:'© Kartverket'}),
-  otm: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-      {maxZoom:17, attribution:'© OpenTopoMap, OpenStreetMap contributors'})
+  kv: L.layerGroup([
+    L.tileLayer(OTM_URL, OTM_OPTS),
+    L.tileLayer('https://cache.kartverket.no/v1/wmts/1.0.0/topo/default/webmercator/{z}/{y}/{x}.png',
+        {maxZoom:18, zIndex:-1, attribution:'© Kartverket'})
+  ]),
+  otm: L.tileLayer(OTM_URL, OTM_OPTS)
 };
 const map = L.map('map', {center:[64.2, 12.0], zoom:5, layers:[bases.kv], zoomControl:true,
                           preferCanvas:true, attributionControl:true});
@@ -1273,7 +1282,6 @@ document.getElementById('ptBright').oninput = ()=>{
 function setBase(key){
   Object.values(bases).forEach(l=>{ if(map.hasLayer(l)) map.removeLayer(l); });
   bases[key].addTo(map);
-  bases[key].bringToBack();
 }
 document.getElementById('b-kv').onchange = ()=>setBase('kv');
 document.getElementById('b-otm').onchange = ()=>setBase('otm');

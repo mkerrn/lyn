@@ -113,6 +113,14 @@ See the note in the panel: peak current is an estimate, and every cloud-to-groun
 stroke is far past any human injury threshold. For "would this have hurt someone
 standing there", the filter is *cloud to ground*, with no current limit at all.
 
+## Base map
+
+Kartverket's topo tiles stop at the border: outside Norway they are fully
+transparent. The detection network reaches well into Sweden and Finland, so the
+Kartverket base is drawn on top of OpenTopoMap, which fills in the neighbouring
+countries. The other option is OpenTopoMap on its own, for one consistent style
+across the whole area.
+
 ## Looking for patterns
 
 Two tools for the question "where does it strike most", neither of which can be
