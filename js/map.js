@@ -15,6 +15,29 @@ const CLASSES = [
 const NCLASS = CLASSES.length;
 const classOn = CLASSES.map(()=>true);
 
+/* Colour presets, weakest class first. Whatever the viewer picks, preset or
+   one swatch at a time, is kept in localStorage for the next visit. */
+const PALETTES = {
+  fire:    ['#f2c14e','#f09030','#e2652f','#cf3038','#8f1d4e'],
+  viridis: ['#fde725','#5ec962','#21918c','#3b528b','#440154'],
+  ice:     ['#c6f0ff','#6baed6','#2171b5','#08519c','#08306b'],
+  neon:    ['#39ff14','#00e5ff','#ff00e5','#ff2a2a','#ffffff']
+};
+const COLOR_KEY = 'lyn.colors';
+function saveColors(){
+  try{ localStorage.setItem(COLOR_KEY, JSON.stringify(CLASSES.map(c=>c.color))); }catch(e){}
+}
+function paletteName(){
+  const cur = CLASSES.map(c=>c.color).join();
+  for(const k in PALETTES) if(PALETTES[k].join() === cur) return k;
+  return 'custom';
+}
+try{
+  const saved = JSON.parse(localStorage.getItem(COLOR_KEY));
+  if(Array.isArray(saved) && saved.length === NCLASS && saved.every(c=>/^#[0-9a-f]{6}$/i.test(c)))
+    saved.forEach((c,k)=> CLASSES[k].color = c);
+}catch(e){}
+
 /* Brightness slider: mix each class colour toward white or black. Done once
    per class per frame, not per strike. */
 function shade(hex, amt){

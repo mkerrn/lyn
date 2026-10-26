@@ -76,15 +76,41 @@ function renderLegend(counts){
   CLASSES.forEach((c,k)=>{
     const d = document.createElement('div');
     d.className = 'k' + (classOn[k] ? '' : ' off');
-    d.innerHTML = '<div class="sw" style="background:'+c.color+'"></div>' +
+    d.innerHTML = '<label class="sw" title="Change colour" style="background:'+
+                  shade(c.color, +document.getElementById('ptBright').value)+'">' +
+                  '<input type="color" value="'+c.color+'"></label>' +
                   '<label>'+c.label+'</label>' +
                   '<span class="n">'+(counts ? counts[k].toLocaleString('en') : '')+'</span>';
     d.onclick = ()=>{
       classOn[k] = !classOn[k];
       refilter();
     };
+    /* The swatch opens the colour picker instead of hiding the class. */
+    d.querySelector('.sw').onclick = e=> e.stopPropagation();
+    d.querySelector('input').oninput = e=> setClassColor(k, e.target.value);
     legendEl.appendChild(d);
   });
+  updateColorUI();
+}
+
+function setClassColor(k, hex){
+  CLASSES[k].color = hex;
+  saveColors();
+  updateColorUI();
+  strikes.redraw();
+}
+
+/* Swatches, the density ramp and the preset menu all follow CLASSES. */
+function updateColorUI(){
+  const b = +document.getElementById('ptBright').value;
+  [...legendEl.querySelectorAll('.sw')].forEach((el,k)=>{
+    el.style.background = shade(CLASSES[k].color, b);
+    el.firstChild.value = CLASSES[k].color;
+  });
+  const c = CLASSES.map(c=>c.color);
+  document.getElementById('densRamp').style.background =
+    'linear-gradient(to right,' + c[0] + '26,' + c.join(',') + ')';
+  document.getElementById('palette').value = paletteName();
 }
 renderLegend(null);
 

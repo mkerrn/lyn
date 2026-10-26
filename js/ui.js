@@ -99,8 +99,15 @@ document.getElementById('densOn').onchange = ()=> strikes.redraw();
 document.getElementById('densCell').onchange = ()=> strikes.redraw();
 document.getElementById('ptBright').oninput = ()=>{
   strikes.redraw();
-  const b = +document.getElementById('ptBright').value;
-  [...legendEl.querySelectorAll('.sw')].forEach((el,k)=> el.style.background = shade(CLASSES[k].color, b));
+  updateColorUI();
+};
+document.getElementById('palette').onchange = e=>{
+  const p = PALETTES[e.target.value];
+  if(!p) return;
+  p.forEach((c,k)=> CLASSES[k].color = c);
+  saveColors();
+  updateColorUI();
+  strikes.redraw();
 };
 
 function setBase(key){
