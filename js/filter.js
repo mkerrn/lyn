@@ -30,11 +30,15 @@ function refilter(){
   const iMin = isNaN(iMinV) ? 0 : iMinV;
   const iMax = isNaN(iMaxV) ? Infinity : iMaxV;
   const pol  = document.getElementById('pol').value;
+  const dr = dayRange();
 
   const counts = new Int32Array(NCLASS);
   const cls = new Uint8Array(i1-i0);
   for(let i=i0;i<i1;i++){
-    if(!monthOn[D.mon[i]]){ cls[i-i0]=255; continue; }
+    if(dr){
+      const k = D.md[i];
+      if(dr.lo <= dr.hi ? (k < dr.lo || k > dr.hi) : (k < dr.lo && k > dr.hi)){ cls[i-i0]=255; continue; }
+    } else if(!monthOn[D.mon[i]]){ cls[i-i0]=255; continue; }
     const cloud = D.flag[i] & 1;
     if(mode==='cg' && cloud) { cls[i-i0]=255; continue; }
     if(mode==='cc' && !cloud){ cls[i-i0]=255; continue; }
@@ -62,6 +66,7 @@ function refilter(){
 
   renderLegend(counts);
   strikes.redraw();
+  regionHours();
 }
 
 /* ---------- legend ---------- */
@@ -93,11 +98,12 @@ function renderMonths(){
     const b = document.createElement('button');
     b.textContent = name;
     b.className = monthOn[m] ? '' : 'off';
-    b.onclick = ()=>{ monthOn[m] = !monthOn[m]; renderMonths(); refilter(); };
+    b.onclick = ()=>{ clearDayRange(); monthOn[m] = !monthOn[m]; renderMonths(); refilter(); };
     monthsEl.appendChild(b);
   });
 }
 function setMonths(list){
+  clearDayRange();
   for(let m=0;m<12;m++) monthOn[m] = list.includes(m);
   renderMonths(); refilter();
 }
@@ -105,3 +111,31 @@ renderMonths();
 document.getElementById('mAll').onclick    = ()=> setMonths([0,1,2,3,4,5,6,7,8,9,10,11]);
 document.getElementById('mSummer').onclick = ()=> setMonths([5,6,7]);
 document.getElementById('mWinter').onclick = ()=> setMonths([10,11,0,1]);
+
+/* ---------- days of the year ---------- */
+/* A from–to pair like 15/8 – 15/9, applied to every year. When both ends are
+   filled in it replaces the month toggles, which are dimmed to say so. A
+   range that runs past New Year, 15/11 – 15/2, wraps. */
+const dayFromEl = document.getElementById('dayFrom'), dayToEl = document.getElementById('dayTo');
+function parseDay(el){
+  const v = el.value.trim();
+  if(!v){ el.classList.remove('bad'); return null; }
+  const m = v.match(/^(\d{1,2})\s*[\/.\-]\s*(\d{1,2})$/);
+  const d = m ? +m[1] : 0, mo = m ? +m[2] : 0;
+  const ok = mo >= 1 && mo <= 12 && d >= 1 && d <= new Date(Date.UTC(2024, mo, 0)).getUTCDate();
+  el.classList.toggle('bad', !ok);
+  return ok ? (mo-1)*32 + d : null;
+}
+function dayRange(){
+  const lo = parseDay(dayFromEl), hi = parseDay(dayToEl);
+  const on = lo !== null && hi !== null;
+  monthsEl.classList.toggle('ignored', on);
+  return on ? {lo, hi} : null;
+}
+function clearDayRange(){
+  dayFromEl.value = dayToEl.value = '';
+  dayFromEl.classList.remove('bad'); dayToEl.classList.remove('bad');
+  monthsEl.classList.remove('ignored');
+}
+[dayFromEl, dayToEl].forEach(el=> el.onchange = refilter);
+document.getElementById('dayClear').onclick = ()=>{ clearDayRange(); refilter(); };

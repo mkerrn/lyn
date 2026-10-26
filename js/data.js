@@ -46,6 +46,19 @@ function parseBin(buf){
     }
   }
 
+  /* Day of the year as month*32 + day, for the day-range filter. Comparing
+     these keys orders dates within a year and ignores leap days, so 15/8 is
+     the same key every year. Walked day by day like the months above. */
+  const md = new Uint16Array(n);
+  if(n){
+    let day = Math.floor(t[0]/86400)*86400, i = 0;
+    while(i < n){
+      const d = new Date(day*1000), key = d.getUTCMonth()*32 + d.getUTCDate(), end = day + 86400;
+      while(i < n && t[i] < end){ md[i] = key; i++; }
+      day = end;
+    }
+  }
+
   /* Project once, here, into normalised web mercator (0–1 across the
      world). A redraw is then one multiply and one subtract per strike
      instead of a trigonometric projection. */
@@ -56,7 +69,7 @@ function parseBin(buf){
     wx[i] = (lo+180)/360;
     wy[i] = 0.5 - Math.log((1+s)/(1-s))/(4*Math.PI);
   }
-  return {n, t, mon, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0:0};
+  return {n, t, mon, md, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0:0};
 }
 
 async function gunzip(buf){
@@ -91,14 +104,14 @@ function merge(chunks){
   const n = chunks.reduce((s,c)=> s + c.n, 0);
   const out = {
     n, t0:0,
-    t:new Uint32Array(n), mon:new Uint8Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
+    t:new Uint32Array(n), mon:new Uint8Array(n), md:new Uint16Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
     peak:new Int16Array(n), smaj:new Uint8Array(n), smin:new Uint8Array(n),
     ang:new Uint8Array(n), flag:new Uint8Array(n),
     wx:new Float64Array(n), wy:new Float64Array(n)
   };
   let o = 0;
   for(const c of chunks){
-    for(const k of ['t','mon','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
+    for(const k of ['t','mon','md','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
     o += c.n;
   }
   return out;

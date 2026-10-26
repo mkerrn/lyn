@@ -38,6 +38,33 @@
         <button class="btn" id="mWinter">Nov–Feb</button>
       </div>
       <p class="note">Cuts across years: leave the range at 2016–2025 and tick only June and July to stack ten summers on one map.</p>
+      <h2 style="margin:14px 0 8px">Days of the year</h2>
+      <div class="row">
+        <input type="text" id="dayFrom" class="day" placeholder="15/8" inputmode="numeric">
+        <span class="dash">–</span>
+        <input type="text" id="dayTo" class="day" placeholder="15/9" inputmode="numeric">
+        <button class="btn" id="dayClear">Clear</button>
+      </div>
+      <p class="note">Day/month, in every year in the range. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
+    </section>
+
+    <section>
+      <h2>Time of day in a region</h2>
+      <div class="actions" style="margin-top:0">
+        <button class="btn" id="rgRect">Draw rectangle</button>
+        <button class="btn" id="rgFree">Draw freehand</button>
+        <button class="btn" id="rgClear">Clear</button>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label for="hourTz">Hours in</label>
+        <select id="hourTz">
+          <option value="oslo" selected>Norwegian clock time</option>
+          <option value="solar">local solar time</option>
+          <option value="utc">UTC</option>
+        </select>
+      </div>
+      <div id="regionChart"></div>
+      <p class="note">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
     </section>
 
     <section>
@@ -177,6 +204,7 @@
 <script src="js/filter.js"></script>
 <script src="js/strikes.js"></script>
 <script src="js/altitude.js"></script>
+<script src="js/region.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

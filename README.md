@@ -10,9 +10,11 @@ and JS: no build step, no server.
 - `js/` — classic scripts sharing one global scope, loaded in this order:
   - `map.js` — map and base layers, current classes, `shade`, `pct`.
   - `data.js` — LYN1 parsing, gunzip, merging years, the year list.
-  - `filter.js` — `refilter()`: dates, months, type, current, legend → `groups`.
+  - `filter.js` — `refilter()`: dates, months or days of the year, type,
+    current, legend → `groups`.
   - `strikes.js` — the canvas layer: points, ellipses, density, sampling.
   - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
+  - `region.js` — drawing a region on the map, and its hour-of-day chart.
   - `ui.js` — scale bar, readout, click popup, control wiring, boot.
 - `fetch_lightning.py` — downloads UALF lightning from MET Norway's Frost API
   and packs it into one `.bin.gz`.
@@ -98,7 +100,7 @@ instead of a scan over everything.
 
 ## Filters
 
-Date range, months, discharge type, peak current range in kA, polarity, and the
+Date range, months or days of the year, discharge type, peak current range in kA, polarity, and the
 legend classes, which toggle on click. All of them compose.
 
 The month toggles cut across the date range rather than narrowing it: leave the
@@ -106,6 +108,11 @@ range at the full archive, tick June and July only, and you get ten summers
 stacked on one map. Jun–Aug and Nov–Feb presets are there because Norway has two
 different lightning seasons — inland convection in late summer, and showers over
 the warm sea along the coast in autumn and winter.
+
+For a span that does not line up with whole months, type a day range such as
+15/8 – 15/9 under *Days of the year*. It applies to every year in the date range
+and replaces the month toggles while both ends are filled in; a span past New
+Year wraps round. Dates are UTC.
 
 There is also an altitude layer, off by default, built from the same open
 elevation tiles the ski map uses for slope. By default the ramp stretches to
@@ -145,6 +152,13 @@ bins the strikes the same way, and plots strikes per 1000 km² against height. A
 rising curve means altitude matters; a flat one means the effect is below the
 noise. Remember that MET's position error is a few hundred metres to a couple of
 kilometres, so this can show a regional trend but not a summit-versus-valley one.
+
+**Time of day in a region.** Draw a rectangle or a freehand outline on the
+map and the panel charts the strikes inside it by hour of day, using every
+strike that passes the filters. Hours can be Norwegian clock time (with summer
+time), local solar time (shifted by each strike's longitude), or UTC. Combine it
+with the months or a day range to compare, say, late-summer inland convection
+against autumn showers on the coast.
 
 ## Sampling
 

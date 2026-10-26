@@ -81,6 +81,17 @@ input[type=file]::file-selector-button{
 }
 #densScale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
            font-variant-numeric:tabular-nums;margin-bottom:8px}
+input.day{width:58px;flex:0 0 auto;padding:4px 6px;font-size:12px;background:var(--panel-2);color:var(--text);
+          border:1px solid var(--line);border-radius:3px;font-family:inherit;font-variant-numeric:tabular-nums}
+input.day.bad{border-color:#ff9a8b}
+.row .dash{color:var(--muted)}
+.row .btn{margin-left:auto}
+.months.ignored{opacity:.35}
+.btn.on{border-color:var(--snow);background:#264556}
+#map.drawing{cursor:crosshair}
+#regionChart{margin:4px 0 4px}
+#regionChart svg{width:100%;height:auto;display:block}
+#regionChart .cap{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
 #elevChart{margin:10px 0 4px}
 #elevChart svg{width:100%;height:auto;display:block}
 #elevChart .cap{font-size:11px;color:var(--muted);line-height:1.5;margin-top:4px}
