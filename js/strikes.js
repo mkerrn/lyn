@@ -94,7 +94,9 @@ const StrikeLayer = L.Layer.extend({
     this._map = map;
     const c = this._canvas = L.DomUtil.create('canvas', 'leaflet-zoom-animated');
     c.style.pointerEvents = 'none';
-    map.getPanes().overlayPane.appendChild(c);
+    /* First in the pane, so a region outline drawn earlier stays on top. */
+    const pane = map.getPanes().overlayPane;
+    pane.insertBefore(c, pane.firstChild);
     map.on('moveend zoomend resize', this._reset, this);
     if(map.options.zoomAnimation && L.Browser.any3d) map.on('zoomanim', this._animateZoom, this);
     this._reset();
@@ -123,7 +125,8 @@ const StrikeLayer = L.Layer.extend({
   redraw: function(){
     if(!this._canvas) return;
     if(this._frame) return;
-    this._frame = requestAnimationFrame(()=>{ this._frame = null; this._draw(); });
+    /* The layer may have left the map by the time the frame comes round. */
+    this._frame = requestAnimationFrame(()=>{ this._frame = null; if(this._map) this._draw(); });
   },
   /* Draws one level of the density pyramid: only the cells in view are
      read, so panning costs nothing like a pass over the strikes. Each cell

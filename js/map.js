@@ -87,6 +87,11 @@ const map = L.map('map', {center:[64.2, 12.0], zoom:5, layers:[bases.kv], zoomCo
                           preferCanvas:true, attributionControl:true});
 map.attributionControl.addAttribution('Lightning © MET Norway');
 
+/* Which layer the map shows: 'lightning', or the id of a grid layer in
+   data/wx/index.json. Changed by setLayer() in grid.js. */
+let layerId = 'lightning';
+const isLightning = ()=> layerId === 'lightning';
+
 function pct(f){
   const p = f*100;
   return (p >= 10 ? p.toFixed(0) : p >= 1 ? p.toFixed(1) : p.toFixed(2)) + ' %';

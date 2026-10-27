@@ -1,7 +1,26 @@
-# Lightning map
+# Weather history
 
-A Leaflet map of historical lightning strikes over Norway. Plain HTML, CSS
-and JS: no build step, no server.
+A Leaflet map of Norway's recent weather, 2016–2025, one layer at a time:
+every lightning strike, and gridded climate layers averaged over the same
+years, starting with thunderstorm days. Plain HTML, CSS and JS: no build
+step, no server.
+
+## Layers
+
+Pick one under *Layer* at the top of the panel; the choice is remembered.
+
+- **Lightning strikes** — every strike, as points or a density grid. Most of
+  this README is about it.
+- **Thunderstorm days** — days a year with a strike within 10 km, from the
+  same lightning files.
+
+The years, months and days of the year apply to every layer. On a grid layer
+the years are averaged, and the months or day range pick which half-months
+take part: counts and amounts are added up over them and shown per year (with
+Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
+the like are averaged. The lightning-only sections of the panel hide on a grid
+layer. More layers — temperature, wind, rain, snow, sun — are planned in
+`PLAN.md`.
 
 ## Files
 
@@ -16,11 +35,18 @@ and JS: no build step, no server.
     sampling, the automatic switch between points and grid.
   - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
   - `region.js` — drawing a region on the map, and its hour-of-day chart.
+  - `grid.js` — the grid layers: `WXG1` loading, combining years and
+    half-months, the canvas layer, its readout, popup and region chart, and
+    the layer switch.
   - `ui.js` — scale bar, readout, click popup, control wiring, boot.
 - `fetch_lightning.py` — downloads UALF lightning from MET Norway's Frost API
   and packs it into one `.bin.gz`.
 - `split_years.py` — cuts that file into one per year under `data/`, with an
   `index.json` the map reads to build its year list.
+- `make_thunder_days.py` — the thunderstorm-days layer from the per-year
+  lightning files, written to `data/wx/`.
+- `wxgrid.py` — shared helpers for the grid layers: the cell grid, half-months,
+  local solar days, writing `WXG1` and updating `data/wx/index.json`.
 
 The map reads `data/index.json`, shows a button per year with every year on,
 and downloads each year the first time it is switched on. Press and drag
@@ -213,3 +239,49 @@ A decade of Norwegian lightning is a few million strikes. That is fine to hold
 in memory — 18 bytes each plus the projection — but it is 30–50 MB compressed
 and slow over a phone connection. If it feels heavy, either pack one file per
 year and add a year picker, or thin at pack time with `--min-current`.
+
+## Grid layers
+
+Every grid layer sits on the density grid's own web-mercator cells, at level 13:
+about 2 km at 65°N, fixed to the map, so a layer lines up with the strikes and
+with the region tool. The files live in `data/wx/`:
+
+- `index.json` — the years, the areas (cell range per area), and per layer its
+  bands and files.
+- `<layer>-<area>-<year>.bin.gz` — one per year.
+- `<layer>-<area>-mean.bin.gz` — the mean over all the years, which is all the
+  map downloads while every year is on.
+
+Thunderstorm days, rebuilt from the lightning in `data/`:
+
+```
+python3 make_thunder_days.py
+```
+
+Takes about two minutes. A cell gets a day when any strike, cloud-to-ground or
+cloud-to-cloud, lands within 10 km of its centre during one local solar day
+(UTC + longitude/15 h). The area is the box round all the lightning, sea
+included, so this is the one grid layer without a land mask; detection drops
+far offshore. It writes 3–4 MB in all.
+
+### The `WXG1` format
+
+Little endian, gzipped.
+
+```
+magic 'WXG1' | uint16 version | uint8 level L | uint8 nbands | uint8 nperiods (24)
+int16 year (0 = mean of all years) | uint32 x0, y0 (cell coords at level L) | uint16 nx, ny
+per band: char[16] id | uint8 dtype (1 = uint8, 2 = int16, 3 = uint16) | float32 scale, offset | uint16 nodata
+data: band-major, then period (24 half-months: 1–15 and 16–end of each month), then rows north to south, nx cells each
+```
+
+A value is raw × scale + offset; raw = nodata means no data (sea, for the
+land layers). Cell (x, y) of the file is cell (x0 + x, y0 + y) of the world at
+level L, the same numbering as map tiles. The header is 23 bytes plus 27 per
+band, so the data starts at an odd offset; the browser copies the wider types
+out to an aligned buffer.
+
+Each layer in `index.json` has `id`, `label`, `source`, `attribution`, `note`
+(shown in the panel), its `bands` (`id`, `label`, `unit`, `agg` — `sum` for
+counts and amounts, `mean` for the rest — and `ramp`), and `files`, by area
+then year, `"0"` being the mean file.

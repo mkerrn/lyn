@@ -203,9 +203,9 @@ pushed.
 
 No new downloads.
 
-- [ ] Rename to **Weather history**: `<title>`, panel `<h1>`, README heading
+- [x] Rename to **Weather history**: `<title>`, panel `<h1>`, README heading
       and intro. Keep the `lyn.*` localStorage keys so saved colours survive.
-- [ ] *Layer* section at the top of the panel: a `<select id="layer">`, kept
+- [x] *Layer* section at the top of the panel: a `<select id="layer">`, kept
       in localStorage. Give lightning-only sections a class (e.g.
       `data-layers="lightning"`). One function shows and hides sections from
       the current layer. Grid layers get one shared section with:
@@ -213,7 +213,7 @@ No new downloads.
       - a colour ramp legend, with a *fix the scale* option like Altitude's
       - opacity
       - source and attribution notes.
-- [ ] `js/grid.js`: load `data/wx/index.json`, then fetch layer/area/year
+- [x] `js/grid.js`: load `data/wx/index.json`, then fetch layer/area/year
       files on demand. Use the mean file when every year is on, and cache what
       has been loaded. Parse `WXG1`. Combine years and half-months into one
       Float32Array per area for the current band and filters. Redo this only
@@ -223,21 +223,21 @@ No new downloads.
       - temperature: diverging at 0 °C
       - days / mm / hours: sequential
       - keep the warm strike colours out of the ramps so they stay distinct.
-- [ ] The corner readout shows the value under the pointer. A click popup
+- [x] The corner readout shows the value under the pointer. A click popup
       shows the value and a 24-bar chart by half-month for that cell over the
       selected years.
-- [ ] Region tool: for grid layers, the land-area-weighted value inside the
+- [x] Region tool: for grid layers, the land-area-weighted value inside the
       outline and the by-part-of-year chart. Hide *Hours in*.
-- [ ] Altitude stays shared. Its *Strikes by height* button is lightning-only
+- [x] Altitude stays shared. Its *Strikes by height* button is lightning-only
       for now.
-- [ ] `make_thunder_days.py`: read `data/lightning-*.bin.gz` (reuse the
+- [x] `make_thunder_days.py`: read `data/lightning-*.bin.gz` (reuse the
       parsing in `split_years.py`). For each level-13 cell and each local day,
       mark a thunderstorm day if any strike, CG or CC, is within 10 km of the
       cell centre. Write `thunder-<area>-<year>.bin.gz` plus the mean file,
       and the index. Make the area the bounding box of the lightning data,
       so it covers sea too. Thunderstorm days are the one grid layer without
       a land mask. Note in the panel that detection drops far offshore.
-- [ ] README: the layer list, the new files, the `WXG1` format, and how to
+- [x] README: the layer list, the new files, the `WXG1` format, and how to
       rebuild. CLAUDE.md: add `grid.js` globals to *Finding your way*.
 
 ### Session 2 — MET Nordic pipeline for Norway, and the non-sun layers
@@ -327,3 +327,9 @@ No new downloads.
 ## Changes to the plan
 
 (Add a dated line here whenever a session changes the plan, and why.)
+
+- 2026-10-27, session 1: layers in `index.json` also carry `attribution` and
+  `note`, shown in the attribution control and the panel. The grid helpers
+  (cells, half-months, solar days, `WXG1` writer, index update) are in
+  `wxgrid.py` for `fetch_climate.py` to reuse. Sequential ramps fade to
+  mostly see-through at the low end, so empty cells don't veil the base map.

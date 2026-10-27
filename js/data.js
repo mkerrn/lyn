@@ -193,9 +193,14 @@ const yearOn = new Set();
 /* A selection change can arrive while an earlier one is still downloading.
    Only the newest call gets to hand its chunks over. */
 let syncSeq = 0;
+const wantedYears = ()=> manifest.files.map(f=> String(f.year)).filter(k=> yearOn.has(k));
+/* The years merged into D, or null for a file opened by hand, so coming back
+   to lightning from a grid layer only merges again if they have changed. */
+let mergedKey = null;
 async function syncYears(){
+  if(!isLightning()){ wxRefresh(); return; }
   const seq = ++syncSeq;
-  const want = manifest.files.map(f=> String(f.year)).filter(k=> yearOn.has(k));
+  const want = wantedYears();
   const missing = want.filter(k=> !loaded.has(k));
   if(missing.length){
     for(const [j,key] of missing.entries()){
@@ -221,7 +226,14 @@ async function syncYears(){
   dataStatus.textContent = want.length
     ? want.length + (want.length===1 ? ' year, ' : ' years, ') + n.toLocaleString('en') + ' strikes in memory.'
     : 'No years selected.';
+  mergedKey = want.join();
   useChunks(chunks);
+}
+
+function showLightning(){
+  if(D && (mergedKey === null ? !yearOn.size : mergedKey === wantedYears().join())) refilter();
+  else if(manifest) syncYears();
+  else updateReadout(0, 1);
 }
 
 function renderYears(){
@@ -286,7 +298,7 @@ document.getElementById('dataFile').onchange = async e=>{
     const buf = await maybeGunzip(await f.arrayBuffer());
     loaded.set(f.name, parseBin(buf));
     yearOn.clear(); if(manifest) renderYears();
-    syncSeq++;
+    syncSeq++; mergedKey = null;
     const c = loaded.get(f.name);
     dataStatus.textContent = f.name + ': ' + c.n.toLocaleString('en') + ' strikes.';
     useChunks([c]);

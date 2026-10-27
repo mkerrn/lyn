@@ -1,4 +1,4 @@
-# Lightning map
+# Weather history
 
 See README.md for what the files do and how the data is built.
 
@@ -16,8 +16,12 @@ straight away. No need to ask first.
 The map is split by concern so a change only needs one or two files read.
 The file list in README.md says what is in each. Shared state lives in globals:
 `D` (the dataset, `data.js`), `groups` / `groupTiles` / `filtered` (`filter.js`),
-`map`, `CLASSES`, `classOn` (`map.js`), `strikes` (`strikes.js`). Use grep for
-an element id or function name rather than reading whole files.
+`map`, `CLASSES`, `classOn`, `layerId` / `isLightning()` (`map.js`), `strikes`
+(`strikes.js`), and for the grid layers `wx` (the index), `wxLayer`, `wxCur`
+(what is drawn: band, years, half-month weights, per-area values) and
+`wxCanvas` (`grid.js`). Lightning-only and grid-only panel parts carry
+`data-layers`. Use grep for an element id or function name rather than reading
+whole files.
 
 ## Ongoing work
 

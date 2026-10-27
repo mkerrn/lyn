@@ -140,3 +140,9 @@ input.day.bad{border-color:#ff9a8b}
   #corner{bottom:20px}
   #readout{font-size:12px}
 }
+[hidden]{display:none !important}
+#layer{font-size:12.5px}
+#wxRamp{height:12px;border:1px solid var(--line);border-radius:2px;margin-bottom:4px}
+#wxScale{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--muted);
+         font-variant-numeric:tabular-nums;margin-bottom:10px}
+.wxPop svg{width:250px;height:auto;display:block;margin:6px 0 2px}

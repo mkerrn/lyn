@@ -14,6 +14,7 @@ function typeMode(){
        : document.getElementById('t-cc').checked ? 'cc' : 'all';
 }
 function refilter(){
+  if(!isLightning()){ wxRefresh(); return; }
   if(!D) return;
   const i0 = 0, i1 = D.n;
   const mode = typeMode();

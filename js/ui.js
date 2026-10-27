@@ -31,6 +31,7 @@ function updateReadout(visible, frac){
 
 /* ---------- click to inspect ---------- */
 map.on('click', e=>{
+  if(!isLightning()){ wxPopup(e); return; }
   if(!D) return;
   const z = map.getZoom(), S = 256*Math.pow(2,z);
   const p = map.project(e.latlng, z);
@@ -108,16 +109,19 @@ function setBase(key){
 document.getElementById('b-kv').onchange = ()=>setBase('kv');
 document.getElementById('b-otm').onchange = ()=>setBase('otm');
 
+/* The grid index comes first, so a saved grid layer is shown straight away
+   and no lightning is downloaded for it. */
 (async function boot(){
+  await wxBoot();
   try{
     const r = await fetch(INDEX_URL);
     if(!r.ok) throw new Error(r.status + ' ' + r.statusText);
     manifest = await r.json();
     buildYearList();
-    await syncYears();
   }catch(err){
     dataStatus.textContent = 'No ' + INDEX_URL + ' found (' + err.message +
       '). Pick a .bin or .bin.gz file below instead.';
     readout.textContent = 'Choose a data file in the panel';
   }
+  setLayer(savedLayer());
 })();

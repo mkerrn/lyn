@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Lightning — historical strikes over Norway</title>
+<title>Weather history — Norway</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <link rel="stylesheet" href="css/style.css">
@@ -17,8 +17,13 @@
 </div>
 
 <div id="panel">
-  <header id="panelHead"><h1>Lightning</h1><span id="toggleHint">hide</span></header>
+  <header id="panelHead"><h1>Weather history</h1><span id="toggleHint">hide</span></header>
   <div id="body">
+
+    <section>
+      <h2>Layer</h2>
+      <select id="layer" style="width:100%"><option value="lightning">Lightning strikes</option></select>
+    </section>
 
     <section>
       <h2>Years</h2>
@@ -28,7 +33,7 @@
         <button class="btn" id="yNone">None</button>
         <button class="btn" id="yLast">Latest</button>
       </div>
-      <p class="note" id="dataStatus">…</p>
+      <p class="note" id="dataStatus" data-layers="lightning">…</p>
       <p class="note">Click a year to toggle it, or press and drag across several to set them all the same way. Each year is downloaded the first time it is switched on and kept after that.</p>
       <h2 style="margin:14px 0 8px">Months</h2>
       <div class="months" id="months"></div>
@@ -48,14 +53,38 @@
       <p class="note">Day/month, in every year selected. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
     </section>
 
+    <section data-layers="grid" hidden>
+      <h2 id="wxTitle">—</h2>
+      <div class="row">
+        <label for="wxBand">Show</label>
+        <select id="wxBand"></select>
+      </div>
+      <div id="wxLegend">
+        <div id="wxRamp"></div>
+        <div id="wxScale"><span id="wxLo">—</span><span id="wxMid"></span><span id="wxHi">—</span></div>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="wxFix">
+        <label for="wxFix">Fix the scale</label>
+        <input type="number" id="wxMin" step="any" placeholder="min" disabled>
+        <input type="number" id="wxMax" step="any" placeholder="max" disabled>
+      </div>
+      <div class="row" style="margin-top:12px"><label for="wxOpacity">Opacity</label></div>
+      <input type="range" id="wxOpacity" min="0" max="100" value="75">
+      <p class="note" id="wxStatus"></p>
+      <p class="note" id="wxNote"></p>
+      <p class="note">Averaged over the years ticked above. The months or days of the year pick which half-months take part: day counts and amounts are added up over them and shown per year, so with Jun–Aug ticked a count is days per summer, while temperatures and the like are averaged. Unfixed, the ramp stretches to the cells on screen; fix the scale to compare one view with another. Point at a cell for its value, tap it for its half-months.</p>
+      <p class="note" id="wxSource"></p>
+    </section>
+
     <section>
-      <h2>Time of day and year in a region</h2>
+      <h2>In a region</h2>
       <div class="actions" style="margin-top:0">
         <button class="btn" id="rgRect">Draw rectangle</button>
         <button class="btn" id="rgFree">Draw freehand</button>
         <button class="btn" id="rgClear">Clear</button>
       </div>
-      <div class="row" style="margin-top:10px">
+      <div class="row" style="margin-top:10px" data-layers="lightning">
         <label for="hourTz">Hours in</label>
         <select id="hourTz">
           <option value="oslo" selected>Norwegian clock time</option>
@@ -64,10 +93,11 @@
         </select>
       </div>
       <div id="regionChart"></div>
-      <p class="note">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck and by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
+      <p class="note" data-layers="grid" hidden>Press a shape, then drag on the map; Esc cancels. Averages every cell whose centre is inside the outline, weighted by its area, so the figure is what a random point in the region would see. Charted by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer.</p>
+      <p class="note" data-layers="lightning">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck and by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>Discharge type</h2>
       <div class="row"><input type="radio" name="typ" id="t-all" checked><label for="t-all">Both</label></div>
       <div class="row"><input type="radio" name="typ" id="t-cg"><label for="t-cg">Cloud to ground</label></div>
@@ -82,7 +112,7 @@
       <input type="range" id="ptBright" min="-60" max="60" value="0">
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>How much to draw</h2>
       <div class="row">
         <label for="drawMode">Show</label>
@@ -106,7 +136,7 @@
       <p class="note" id="sampleNote"></p>
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>Density grid</h2>
       <div class="row">
         <label for="densCell">Cell size</label>
@@ -131,7 +161,7 @@
       <p class="note">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view, or with the box ticked to the strongest anywhere, so a colour means the same density wherever you look. Counts every strike in the filter, even when the points are sampled. The grid is fixed to the map, so cells stay put as you pan; sizes are at 65°N, and a cell is about a quarter wider in the far south and a quarter narrower in Finnmark, which the per-km² figures allow for.</p>
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>Uncertainty ellipses</h2>
       <div class="row">
         <input type="checkbox" id="ellOn" checked>
@@ -142,7 +172,7 @@
       <p class="note" id="ellNote"></p>
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>Peak current</h2>
       <div class="row">
         <label for="iMin" style="flex:0 0 auto">Keep |kA| from</label>
@@ -197,10 +227,10 @@
       <div class="row" style="margin-top:12px"><label for="altOpacity">Terrain opacity</label></div>
       <input type="range" id="altOpacity" min="0" max="100" value="60">
       <p class="note">Unfixed, the ramp stretches to whatever is on screen: the lowest ground in view is dark blue, the highest is pale. Pan into a valley and it restretches, so colours mean different heights in different views. Fix the scale to compare one place against another.</p>
-      <div class="actions">
+      <div class="actions" data-layers="lightning">
         <button class="btn" id="elevRun">Strikes by height, in this view</button>
       </div>
-      <div id="elevChart"></div>
+      <div id="elevChart" data-layers="lightning"></div>
       <p class="note">Blues and greens throughout, so the warm strike colours stay readable on top. Sea is left clear. Heights come from open 10–30 m elevation tiles, computed in your browser.</p>
     </section>
 
@@ -210,14 +240,14 @@
       <div class="row"><input type="radio" name="base" id="b-otm"><label for="b-otm">OpenTopoMap</label></div>
     </section>
 
-    <section>
+    <section data-layers="lightning">
       <h2>Open a file</h2>
       <input type="file" id="dataFile" accept=".bin,.gz">
       <p class="note">Open a LYN1 file from disk instead of the years above. Nothing is uploaded anywhere; it is read in your browser.</p>
     </section>
 
     <section style="border-top:1px solid var(--line);padding-top:12px">
-      <p class="note">Lightning data © Meteorologisk institutt, distributed under NLOD / CC BY 4.0, detected by the Nordic lightning network. Positions are triangulated, not observed: a point can be a kilometre or more from where the flash actually hit, which is what the ellipse is telling you. Detection efficiency is lower for cloud-to-cloud than for cloud-to-ground, and lower everywhere far offshore.</p>
+      <p class="note">Lightning and weather data © Meteorologisk institutt, distributed under NLOD / CC BY 4.0, detected by the Nordic lightning network. Positions are triangulated, not observed: a point can be a kilometre or more from where the flash actually hit, which is what the ellipse is telling you. Detection efficiency is lower for cloud-to-cloud than for cloud-to-ground, and lower everywhere far offshore.</p>
       <p class="note">Base maps © Kartverket and © OpenTopoMap / OpenStreetMap contributors.</p>
     </section>
 
@@ -229,6 +259,7 @@
 <script src="js/strikes.js"></script>
 <script src="js/altitude.js"></script>
 <script src="js/region.js"></script>
+<script src="js/grid.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

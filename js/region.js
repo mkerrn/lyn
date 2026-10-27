@@ -200,26 +200,32 @@ function seasonLabel(s, b){
 
 /* ---------- the charts ---------- */
 /* One bar chart: counts, the label under bar b (or null), the tooltip name of
-   bar b, a title for the top left and the unit for the peak at the top right. */
-function barChart(counts, n, tick, name, title, unit){
+   bar b, a title for the top left and the unit for the peak at the top right.
+   A grid layer passes opt = {fmt, color, dim}: values instead of strike
+   counts, formatted by fmt, bars from the lowest value when it is below
+   zero, and bar b faded when dim(b). */
+function barChart(counts, n, tick, name, title, unit, opt){
   const nb = counts.length;
-  let best = 0;
-  for(let b=0;b<nb;b++) if(counts[b] > best) best = counts[b];
+  let best = 0, lo = 0;
+  for(let b=0;b<nb;b++){ if(counts[b] > best) best = counts[b]; if(counts[b] < lo) lo = counts[b]; }
   const w = 260, ch = 90, pad = 4, bw = (w - 2*pad)/nb;
   let svg = '<svg viewBox="0 0 '+w+' '+(ch+14)+'" xmlns="http://www.w3.org/2000/svg">';
   for(let b=0;b<nb;b++){
-    const bh = best ? counts[b]/best*(ch-10) : 0;
+    const bh = best > lo && counts[b] === counts[b] ? (counts[b]-lo)/(best-lo)*(ch-10) : 0;
     const x = pad + b*bw;
     svg += '<rect x="'+(x+0.5).toFixed(1)+'" y="'+(ch-bh).toFixed(1)+'" width="'+Math.max(0.5, bw-1).toFixed(1)+
-           '" height="'+bh.toFixed(1)+'" fill="#e2652f" opacity="0.85"><title>'+
-           name(b)+' · '+counts[b].toLocaleString('en')+' strikes · '+pct(counts[b]/n)+'</title></rect>';
+           '" height="'+bh.toFixed(1)+'" fill="'+(opt ? opt.color : '#e2652f')+
+           '" opacity="'+(opt && opt.dim && opt.dim(b) ? 0.3 : 0.85)+'"><title>'+
+           (opt ? name(b)+' · '+opt.fmt(counts[b])
+                : name(b)+' · '+counts[b].toLocaleString('en')+' strikes · '+pct(counts[b]/n))+'</title></rect>';
     const t = tick(b);
     if(t !== null)
       svg += '<text x="'+x.toFixed(1)+'" y="'+(ch+11)+'" font-size="8" fill="#93aab5">'+t+'</text>';
   }
   svg += '<line x1="'+pad+'" y1="'+ch+'" x2="'+(w-pad)+'" y2="'+ch+'" stroke="#2e4a58"/>';
   svg += '<text x="'+pad+'" y="8" font-size="8" fill="#93aab5">'+title+'</text>';
-  svg += '<text x="'+(w-pad)+'" y="8" text-anchor="end" font-size="8" fill="#93aab5">peak '+pct(best/n)+' per '+unit+'</text>';
+  svg += '<text x="'+(w-pad)+'" y="8" text-anchor="end" font-size="8" fill="#93aab5">peak '+
+         (opt ? opt.fmt(best) : pct(best/n)+' per '+unit)+'</text>';
   return svg + '</svg>';
 }
 
@@ -229,6 +235,7 @@ function regionHours(){
     host.innerHTML = '<p class="cap">No region yet. Pick a shape above and drag on the map.</p>';
     return;
   }
+  if(!isLightning()){ wxRegion(); return; }
   if(!D){ host.innerHTML = '<p class="cap">No strikes loaded.</p>'; return; }
   const tz = document.getElementById('hourTz').value;
   const hours = new Float64Array(24);

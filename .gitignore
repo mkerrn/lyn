@@ -1,3 +1,4 @@
 cache/
 lightning.bin.gz
 demo.bin.gz
+__pycache__/
