@@ -3,6 +3,8 @@
 /* ---------- filtering ---------- */
 let groups = [];   // per current class: Int32Array of every index passing the filter
 let filtered = 0;  // how many that is, over all classes
+let groupTiles = []; // per class: groupTiles[k][t] is where tile t starts in groups[k]
+let filterGen = 0;   // bumped on every refilter, so derived tables know when to rebuild
 
 /* The years are chosen by which files are loaded, so this is one pass
    that buckets the survivors by current class, which lets the draw loop
@@ -45,14 +47,24 @@ function refilter(){
 
   /* Every survivor is kept here. The draw cap is applied later, to what is
      on screen, so zooming into one valley shows all of its strikes. */
+  /* D is sorted by tile, so walking it tile by tile keeps each class list
+     in tile order too, and the draw can take the strikes of a row of tiles
+     as one slice. */
   groups = [];
   for(let k=0;k<NCLASS;k++) groups.push(new Int32Array(classOn[k] ? counts[k] : 0));
+  const T = D.tiles, nt = T.ntx*T.nty;
+  groupTiles = groups.map(()=> new Int32Array(nt+1));
   const fill = new Int32Array(NCLASS);
-  for(let i=i0;i<i1;i++){
-    const k = cls[i-i0];
-    if(k===255 || !classOn[k]) continue;
-    groups[k][fill[k]++] = i;
+  for(let t=0;t<nt;t++){
+    for(let k=0;k<NCLASS;k++) groupTiles[k][t] = fill[k];
+    for(let i=T.start[t], e=T.start[t+1]; i<e; i++){
+      const k = cls[i-i0];
+      if(k===255 || !classOn[k]) continue;
+      groups[k][fill[k]++] = i;
+    }
   }
+  for(let k=0;k<NCLASS;k++) groupTiles[k][nt] = fill[k];
+  filterGen++;
 
   renderLegend(counts);
   strikes.redraw();

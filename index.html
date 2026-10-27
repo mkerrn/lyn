@@ -85,38 +85,50 @@
     <section>
       <h2>How much to draw</h2>
       <div class="row">
+        <label for="drawMode">Show</label>
+        <select id="drawMode">
+          <option value="auto" selected>automatic</option>
+          <option value="points">points</option>
+          <option value="density">density grid</option>
+        </select>
+      </div>
+      <div class="row">
         <label for="cap">Draw at most, on screen</label>
         <select id="cap">
           <option value="50000">50 000 strikes</option>
-          <option value="150000" selected>150 000 strikes</option>
-          <option value="400000">400 000 strikes</option>
+          <option value="150000">150 000 strikes</option>
+          <option value="400000" selected>400 000 strikes</option>
+          <option value="1000000">1 000 000 strikes</option>
           <option value="0">everything</option>
         </select>
       </div>
+      <p class="note">Automatic draws points until there are more strikes on screen than this, then switches to the density grid. Points on their own draw an even sample down to it instead.</p>
       <p class="note" id="sampleNote"></p>
     </section>
 
     <section>
       <h2>Density grid</h2>
       <div class="row">
-        <input type="checkbox" id="densOn">
-        <label for="densOn">Strikes per km² instead of points</label>
-      </div>
-      <div class="row">
         <label for="densCell">Cell size</label>
         <select id="densCell">
-          <option value="1">1 km</option>
-          <option value="5">5 km</option>
-          <option value="10" selected>10 km</option>
-          <option value="25">25 km</option>
-          <option value="50">50 km</option>
+          <option value="14">≈ 1 km</option>
+          <option value="13">≈ 2 km</option>
+          <option value="12">≈ 4 km</option>
+          <option value="11" selected>≈ 8 km</option>
+          <option value="10">≈ 17 km</option>
+          <option value="9">≈ 33 km</option>
+          <option value="8">≈ 66 km</option>
         </select>
+      </div>
+      <div class="row">
+        <input type="checkbox" id="densFixed">
+        <label for="densFixed">Same colour scale everywhere</label>
       </div>
       <div id="densLegend">
         <div id="densRamp"></div>
         <div id="densScale"><span>0</span><span id="densHi">—</span></div>
       </div>
-      <p class="note">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view. Counts every strike in the filter, even when the points are sampled.</p>
+      <p class="note">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view, or with the box ticked to the strongest anywhere, so a colour means the same density wherever you look. Counts every strike in the filter, even when the points are sampled. The grid is fixed to the map, so cells stay put as you pan; sizes are at 65°N, and a cell is about a quarter wider in the far south and a quarter narrower in Finnmark, which the per-km² figures allow for.</p>
     </section>
 
     <section>

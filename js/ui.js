@@ -79,7 +79,8 @@ document.getElementById('pol').onchange = refilter;
 document.getElementById('ellOn').onchange = ()=> strikes.redraw();
 document.getElementById('ellOpacity').oninput = ()=> strikes.redraw();
 document.getElementById('ptOpacity').oninput = ()=> strikes.redraw();
-document.getElementById('densOn').onchange = ()=> strikes.redraw();
+document.getElementById('drawMode').onchange = ()=> strikes.redraw();
+document.getElementById('densFixed').onchange = ()=> strikes.redraw();
 document.getElementById('densCell').onchange = ()=> strikes.redraw();
 document.getElementById('ptBright').oninput = ()=>{
   strikes.redraw();

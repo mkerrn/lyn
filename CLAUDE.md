@@ -15,6 +15,6 @@ straight away. No need to ask first.
 
 The map is split by concern so a change only needs one or two files read.
 The file list in README.md says what is in each. Shared state lives in globals:
-`D` (the dataset, `data.js`), `groups` / `filtered` (`filter.js`),
+`D` (the dataset, `data.js`), `groups` / `groupTiles` / `filtered` (`filter.js`),
 `map`, `CLASSES`, `classOn` (`map.js`), `strikes` (`strikes.js`). Use grep for
 an element id or function name rather than reading whole files.

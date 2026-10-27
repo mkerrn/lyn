@@ -9,10 +9,11 @@ and JS: no build step, no server.
 - `css/style.css` — all the styling.
 - `js/` — classic scripts sharing one global scope, loaded in this order:
   - `map.js` — map and base layers, current classes, `shade`, `pct`.
-  - `data.js` — LYN1 parsing, gunzip, merging years, the year list.
+  - `data.js` — LYN1 parsing, gunzip, merging years into tile order, the year list.
   - `filter.js` — `refilter()`: months or days of the year, type,
-    current, legend → `groups`.
-  - `strikes.js` — the canvas layer: points, ellipses, density, sampling.
+    current, legend → `groups`, `groupTiles`.
+  - `strikes.js` — the canvas layer: points, ellipses, the density pyramid,
+    sampling, the automatic switch between points and grid.
   - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
   - `region.js` — drawing a region on the map, and its hour-of-day chart.
   - `ui.js` — scale bar, readout, click popup, control wiring, boot.
@@ -142,10 +143,19 @@ across the whole area.
 Two tools for the question "where does it strike most", neither of which can be
 answered by looking at dots:
 
-**Density grid.** Counts per km² in cells of 1–50 km, log-scaled, rescaling to
-the strongest cell in view. It counts every strike in the filter, never the
-drawn sample. Cells smaller than a pixel are widened until they are not, and the
-panel says so.
+**Density grid.** Counts per km² in cells of about 1–66 km, log-scaled,
+rescaling to the strongest cell in view, or to the strongest anywhere with
+*Same colour scale everywhere* ticked. It counts every strike in the filter,
+never the drawn sample. Cells smaller than a pixel are widened until they are
+not, and the panel says so.
+
+The grid is fixed to the map: power-of-two cells in web mercator, the same
+scheme as map tiles, so a cell does not move when you pan. Every filtered strike
+is counted once into the finest level, about 1 km, when the filter changes, and
+each coarser level adds up 2×2 cells of the one below. A redraw only reads the
+cells in view. The sizes in the menu are at 65°N; mercator cells shrink toward
+the pole, so a cell is about a quarter wider at Lindesnes and a quarter narrower
+in Finnmark. Each row's true area is used for the per-km² figures.
 
 **Strikes by height.** Turn the altitude layer on, let the tiles load, press the
 button. It bins every elevation pixel on screen to get land area per 100 m band,
@@ -161,9 +171,16 @@ time), local solar time (shifted by each strike's longitude), or UTC. Combine it
 with the months or a day range to compare, say, late-summer inland convection
 against autumn showers on the coast.
 
+## Points or grid
+
+*Show* is automatic by default: points while there are no more strikes on screen
+than the cap, the density grid beyond it. Zoomed out over the country you get
+the grid; zoom into a region and the points appear. Pick *points* or *density
+grid* to hold one or the other.
+
 ## Sampling
 
-The panel has a cap on how many strikes are drawn — 150 000 by default — and it
+The panel has a cap on how many strikes are drawn — 400 000 by default — and it
 counts only what is on screen. Zoom into one valley and every strike there is
 drawn, whatever the date range; zoom out over the whole country and the map
 draws an even sample instead and says what fraction you are looking at, both in
@@ -178,6 +195,19 @@ strike in the filter.
 
 Ellipses are thinned further, to 60 000, because a rotated ellipse costs many
 times what a dot does. The panel says when that is happening.
+
+## Speed
+
+When years are merged the strikes are sorted by map tile, about 4 km across, so
+the strikes in a tile have neighbouring indices. `refilter()` keeps that order
+in each class list and records where each tile starts (`groupTiles`). A draw
+then reads only the rows of tiles in view: zoomed into a valley it touches a few
+thousand strikes, not millions. The same tile counts decide, without reading a
+strike, whether the automatic mode shows points or the grid.
+
+Past 30 000 dots the points are written straight into a pixel buffer instead of
+being drawn as canvas arcs. Every strike of all ten years, drawn as points over
+the whole country, takes about a third of a second that way.
 
 A decade of Norwegian lightning is a few million strikes. That is fine to hold
 in memory — 18 bytes each plus the projection — but it is 30–50 MB compressed

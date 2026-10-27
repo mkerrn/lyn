@@ -8,10 +8,11 @@
 const INDEX_URL = 'data/index.json';
 
 /* ---------- the dataset ---------- */
-/* Struct of arrays, sorted by time. Kept as typed arrays so a few
+/* Struct of arrays. Each file is sorted by time; the merged set in D is
+   sorted by map tile instead, see merge(). Kept as typed arrays so a few
    hundred thousand strikes cost a few megabytes instead of a few
    hundred, and so a redraw is a tight numeric loop. */
-let D = null;      // {n, t, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0}
+let D = null;      // {n, t, lat, lon, peak, smaj, smin, ang, flag, wx, wy, t0, tiles}
 
 /* Timestamps inside a file are seconds from that file's own epoch. On the
    way in they become absolute unix seconds, so chunks from different years
@@ -95,31 +96,79 @@ const loaded = new Map();     // key -> parsed chunk, kept so reselecting is fre
 let manifest = null;
 let firstFit = true;
 
-/* Concatenating is a copy, but it happens once per selection change rather
-   than once per frame, and it keeps every loop downstream working on one
-   flat array. */
+/* Map tiles for the spatial index: level 12 is about 4 km across at 65°N,
+   a few dozen pixels at the zooms where it matters. */
+const TILE_LEVEL = 12;
+const COLUMNS = ['t','mon','md','lat','lon','peak','smaj','smin','ang','flag','wx','wy'];
+
+/* Concatenates the chosen years and sorts the result by map tile, rows of
+   tiles north to south, so the strikes in any one tile are a contiguous run
+   of indices. A draw then reads only the tiles in view instead of scanning
+   every strike. Within a tile the order stays by time. The loaded chunks
+   themselves are left in time order; this is a copy, made once per
+   selection change. D.tiles.start[t] is the first index in tile t. */
 function merge(chunks){
   chunks = chunks.slice().sort((a,b)=> a.t[0] - b.t[0]);
-  if(chunks.length === 1) return chunks[0];
   const n = chunks.reduce((s,c)=> s + c.n, 0);
-  const out = {
-    n, t0:0,
-    t:new Uint32Array(n), mon:new Uint8Array(n), md:new Uint16Array(n), lat:new Int32Array(n), lon:new Int32Array(n),
-    peak:new Int16Array(n), smaj:new Uint8Array(n), smin:new Uint8Array(n),
-    ang:new Uint8Array(n), flag:new Uint8Array(n),
-    wx:new Float64Array(n), wy:new Float64Array(n)
-  };
+
+  let x0 = 1, x1 = 0, y0 = 1, y1 = 0;
+  for(const c of chunks) for(let i=0;i<c.n;i++){
+    const x = c.wx[i], y = c.wy[i];
+    if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y;
+  }
+  if(!n) x0 = x1 = y0 = y1 = 0.5;
+  /* A stray strike far outside the network would stretch the box; coarser
+     tiles keep the table to a couple of million entries whatever happens. */
+  let L = TILE_LEVEL, N, tx0, ty0, ntx, nty;
+  for(;;){
+    N = Math.pow(2, L);
+    tx0 = Math.floor(x0*N); ty0 = Math.floor(y0*N);
+    ntx = Math.min(N-1, Math.floor(x1*N)) - tx0 + 1;
+    nty = Math.min(N-1, Math.floor(y1*N)) - ty0 + 1;
+    if(ntx*nty <= 1<<21 || L === 0) break;
+    L--;
+  }
+
+  /* Counting sort: tile of every strike, then where each one goes. */
+  const nt = ntx*nty, start = new Int32Array(nt+1), dest = new Int32Array(n);
   let o = 0;
-  for(const c of chunks){
-    for(const k of ['t','mon','md','lat','lon','peak','smaj','smin','ang','flag','wx','wy']) out[k].set(c[k], o);
-    o += c.n;
+  for(const c of chunks) for(let i=0;i<c.n;i++){
+    const tx = Math.min(ntx-1, Math.floor(c.wx[i]*N) - tx0);
+    const ty = Math.min(nty-1, Math.floor(c.wy[i]*N) - ty0);
+    const t = ty*ntx + tx;
+    dest[o++] = t; start[t+1]++;
+  }
+  for(let t=0;t<nt;t++) start[t+1] += start[t];
+  const next = start.slice(0, nt);
+  for(let j=0;j<n;j++) dest[j] = next[dest[j]]++;
+
+  const out = {n, t0:0, tiles:{L, tx0, ty0, ntx, nty, start}};
+  for(const k of COLUMNS){
+    const col = out[k] = new chunks[0][k].constructor(n);
+    let o = 0;
+    for(const c of chunks){ scatter(col, c[k], dest, o); o += c.n; }
   }
   return out;
 }
 
+/* out[dest[o+i]] = src[i], through a view of the right width. One loop
+   per element size, because a single loop fed twelve kinds of typed array
+   is one the JIT gives up on, and runs many times slower. */
+function scatter(out, src, dest, o){
+  const w = src.BYTES_PER_ELEMENT;
+  if(w === 8) scatter64(out, src, dest, o);
+  else if(w === 4) scatter32(new Uint32Array(out.buffer), new Uint32Array(src.buffer, src.byteOffset, src.length), dest, o);
+  else if(w === 2) scatter16(new Uint16Array(out.buffer), new Uint16Array(src.buffer, src.byteOffset, src.length), dest, o);
+  else scatter8(new Uint8Array(out.buffer), new Uint8Array(src.buffer, src.byteOffset, src.length), dest, o);
+}
+function scatter64(out, src, dest, o){ for(let i=0;i<src.length;i++) out[dest[o+i]] = src[i]; }
+function scatter32(out, src, dest, o){ for(let i=0;i<src.length;i++) out[dest[o+i]] = src[i]; }
+function scatter16(out, src, dest, o){ for(let i=0;i<src.length;i++) out[dest[o+i]] = src[i]; }
+function scatter8 (out, src, dest, o){ for(let i=0;i<src.length;i++) out[dest[o+i]] = src[i]; }
+
 function useChunks(chunks){
   if(!chunks.length){
-    D = null; groups = []; filtered = 0;
+    D = null; groups = []; groupTiles = []; filtered = 0;
     strikes.redraw();
     readout.textContent = 'No years selected';
     return;
