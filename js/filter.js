@@ -1,29 +1,19 @@
-/* Filters (dates, months, type, current, legend) into per-class index lists. */
+/* Filters (months, type, current, legend) into per-class index lists. */
 
 /* ---------- filtering ---------- */
 let groups = [];   // per current class: Int32Array of every index passing the filter
 let filtered = 0;  // how many that is, over all classes
 
-/* The file is sorted by time, so the date range is a binary search for
-   a slice, not a scan. Everything else is one pass that buckets the
-   survivors by current class, which lets the draw loop set a colour
-   once per class instead of once per strike. */
-function lowerBound(t, v){
-  let lo=0, hi=t.length;
-  while(lo<hi){ const m=(lo+hi)>>1; if(t[m]<v) lo=m+1; else hi=m; }
-  return lo;
-}
+/* The years are chosen by which files are loaded, so this is one pass
+   that buckets the survivors by current class, which lets the draw loop
+   set a colour once per class instead of once per strike. */
 function typeMode(){
   return document.getElementById('t-cg').checked ? 'cg'
        : document.getElementById('t-cc').checked ? 'cc' : 'all';
 }
 function refilter(){
   if(!D) return;
-  const fv = document.getElementById('dFrom').value, tv = document.getElementById('dTo').value;
-  const from = fv ? Date.parse(fv+'T00:00:00Z')/1000 - D.t0 : -Infinity;
-  const to   = tv ? Date.parse(tv+'T00:00:00Z')/1000 + 86400 - D.t0 : Infinity;
-  const i0 = from===-Infinity ? 0   : lowerBound(D.t, from);
-  const i1 = to===Infinity    ? D.n : lowerBound(D.t, to);
+  const i0 = 0, i1 = D.n;
   const mode = typeMode();
   const iMinV = parseFloat(document.getElementById('iMin').value);
   const iMaxV = parseFloat(document.getElementById('iMax').value);
@@ -77,8 +67,8 @@ function renderLegend(counts){
     const d = document.createElement('div');
     d.className = 'k' + (classOn[k] ? '' : ' off');
     d.innerHTML = '<label class="sw" title="Change colour" style="background:'+
-                  shade(c.color, +document.getElementById('ptBright').value)+'">' +
-                  '<input type="color" value="'+c.color+'"></label>' +
+                  shade(classColor(k), +document.getElementById('ptBright').value)+'">' +
+                  '<input type="color" value="'+classColor(k)+'"></label>' +
                   '<label>'+c.label+'</label>' +
                   '<span class="n">'+(counts ? counts[k].toLocaleString('en') : '')+'</span>';
     d.onclick = ()=>{
@@ -94,8 +84,8 @@ function renderLegend(counts){
 }
 
 function setClassColor(k, hex){
-  CLASSES[k].color = hex;
-  saveColors();
+  if(single.on){ single.color = hex; saveSingle(); }
+  else{ CLASSES[k].color = hex; saveColors(); }
   updateColorUI();
   strikes.redraw();
 }
@@ -104,13 +94,15 @@ function setClassColor(k, hex){
 function updateColorUI(){
   const b = +document.getElementById('ptBright').value;
   [...legendEl.querySelectorAll('.sw')].forEach((el,k)=>{
-    el.style.background = shade(CLASSES[k].color, b);
-    el.firstChild.value = CLASSES[k].color;
+    el.style.background = shade(classColor(k), b);
+    el.firstChild.value = classColor(k);
   });
   const c = CLASSES.map(c=>c.color);
   document.getElementById('densRamp').style.background =
     'linear-gradient(to right,' + c[0] + '26,' + c.join(',') + ')';
-  document.getElementById('palette').value = paletteName();
+  document.getElementById('palette').value = single.on ? 'single' : paletteName();
+  document.getElementById('singleRow').style.display = single.on ? '' : 'none';
+  document.getElementById('singleColor').value = single.color;
 }
 renderLegend(null);
 

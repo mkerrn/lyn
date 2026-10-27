@@ -38,6 +38,19 @@ try{
     saved.forEach((c,k)=> CLASSES[k].color = c);
 }catch(e){}
 
+/* One colour for every strike instead of one per class. The classes still
+   filter; only the paint is shared. Kept for the next visit like the rest. */
+const SINGLE_KEY = 'lyn.single';
+const single = {on:false, color:'#f2c14e'};
+try{
+  const saved = JSON.parse(localStorage.getItem(SINGLE_KEY));
+  if(saved && /^#[0-9a-f]{6}$/i.test(saved.color)){ single.on = !!saved.on; single.color = saved.color; }
+}catch(e){}
+function saveSingle(){
+  try{ localStorage.setItem(SINGLE_KEY, JSON.stringify(single)); }catch(e){}
+}
+function classColor(k){ return single.on ? single.color : CLASSES[k].color; }
+
 /* Brightness slider: mix each class colour toward white or black. Done once
    per class per frame, not per strike. */
 function shade(hex, amt){

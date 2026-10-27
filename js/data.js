@@ -125,12 +125,6 @@ function useChunks(chunks){
     return;
   }
   D = merge(chunks);
-  const a = new Date(D.t[0]*1000), b = new Date(D.t[D.n-1]*1000);
-  const lo = a.toISOString().slice(0,10), hi = b.toISOString().slice(0,10);
-  const from = document.getElementById('dFrom'), to = document.getElementById('dTo');
-  from.min = to.min = lo; from.max = to.max = hi;
-  if(!from.value || from.value < lo || from.value > hi) from.value = lo;
-  if(!to.value   || to.value   < lo || to.value   > hi) to.value   = hi;
   refilter();
   if(firstFit){
     firstFit = false;
@@ -144,13 +138,20 @@ function useChunks(chunks){
   }
 }
 
+/* Which years are switched on, as manifest year strings. */
+const yearOn = new Set();
+
+/* A selection change can arrive while an earlier one is still downloading.
+   Only the newest call gets to hand its chunks over. */
+let syncSeq = 0;
 async function syncYears(){
-  const boxes = [...yearsEl.querySelectorAll('input[type=checkbox]')];
-  const want = boxes.filter(b=>b.checked).map(b=>b.value);
+  const seq = ++syncSeq;
+  const want = manifest.files.map(f=> String(f.year)).filter(k=> yearOn.has(k));
   const missing = want.filter(k=> !loaded.has(k));
   if(missing.length){
-    dataStatus.textContent = 'Loading ' + missing.join(', ') + '…';
-    for(const key of missing){
+    for(const [j,key] of missing.entries()){
+      if(loaded.has(key)) continue;
+      dataStatus.textContent = 'Loading ' + key + (missing.length > 1 ? ' (' + (j+1) + ' of ' + missing.length + ')' : '') + '…';
       const entry = manifest.files.find(f=> String(f.year) === key);
       try{
         const r = await fetch(entry.file);
@@ -159,11 +160,13 @@ async function syncYears(){
         loaded.set(key, parseBin(buf));
       }catch(err){
         dataStatus.textContent = 'Could not load ' + entry.file + ': ' + err.message;
-        boxes.find(b=>b.value===key).checked = false;
+        yearOn.delete(key); renderYears();
         return;
       }
+      if(seq !== syncSeq) return;
     }
   }
+  if(seq !== syncSeq) return;
   const chunks = want.map(k=> loaded.get(k));
   const n = chunks.reduce((s,c)=> s + c.n, 0);
   dataStatus.textContent = want.length
@@ -172,21 +175,58 @@ async function syncYears(){
   useChunks(chunks);
 }
 
+function renderYears(){
+  yearsEl.querySelectorAll('button').forEach(b=> b.classList.toggle('off', !yearOn.has(b.value)));
+}
+function setYears(keys){
+  yearOn.clear(); keys.forEach(k=> yearOn.add(String(k)));
+  renderYears(); syncYears();
+}
+
+/* Press on a year to flip it, then drag across others to give them the
+   same state. Hit-testing the pointer position rather than listening on
+   each button makes the drag work with a finger as well as a mouse. */
 function buildYearList(){
   yearsEl.innerHTML = '';
-  manifest.files.forEach((f,idx)=>{
-    const row = document.createElement('div');
-    row.className = 'row';
-    const id = 'y'+f.year;
-    row.innerHTML = '<input type="checkbox" id="'+id+'" value="'+f.year+'"'+
-      (idx === manifest.files.length-1 ? ' checked' : '')+'>' +
-      '<label for="'+id+'">'+f.year+'</label>' +
-      '<span style="color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums">'+
-      (f.n/1000).toFixed(0)+'k · '+(f.bytes/1e6).toFixed(0)+' MB</span>';
-    row.querySelector('input').onchange = syncYears;
-    yearsEl.appendChild(row);
+  manifest.files.forEach(f=>{
+    const b = document.createElement('button');
+    b.value = String(f.year);
+    b.textContent = f.year;
+    b.title = (f.n/1000).toFixed(0)+'k strikes · '+(f.bytes/1e6).toFixed(0)+' MB';
+    yearsEl.appendChild(b);
+    yearOn.add(b.value);
   });
+  renderYears();
+
+  let drag = null;   // the state being painted, while the pointer is down
+  const hit = e=>{
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    return el && el.parentNode === yearsEl ? el : null;
+  };
+  const paint = b=>{
+    if(!b || yearOn.has(b.value) === drag) return;
+    if(drag) yearOn.add(b.value); else yearOn.delete(b.value);
+    renderYears();
+  };
+  yearsEl.onpointerdown = e=>{
+    const b = hit(e);
+    if(!b) return;
+    e.preventDefault();
+    drag = !yearOn.has(b.value);
+    yearsEl.setPointerCapture(e.pointerId);
+    paint(b);
+  };
+  yearsEl.onpointermove = e=>{ if(drag !== null) paint(hit(e)); };
+  yearsEl.onpointerup = yearsEl.onpointercancel = ()=>{
+    if(drag === null) return;
+    drag = null;
+    syncYears();
+  };
 }
+const yearKeys = ()=> manifest ? manifest.files.map(f=> f.year) : [];
+document.getElementById('yAll').onclick  = ()=> manifest && setYears(yearKeys());
+document.getElementById('yNone').onclick = ()=> manifest && setYears([]);
+document.getElementById('yLast').onclick = ()=> manifest && setYears(yearKeys().slice(-1));
 
 
 document.getElementById('dataFile').onchange = async e=>{
@@ -196,7 +236,8 @@ document.getElementById('dataFile').onchange = async e=>{
   try{
     const buf = await maybeGunzip(await f.arrayBuffer());
     loaded.set(f.name, parseBin(buf));
-    yearsEl.querySelectorAll('input[type=checkbox]').forEach(b=> b.checked = false);
+    yearOn.clear(); if(manifest) renderYears();
+    syncSeq++;
     const c = loaded.get(f.name);
     dataStatus.textContent = f.name + ': ' + c.n.toLocaleString('en') + ' strikes.';
     useChunks([c]);

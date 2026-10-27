@@ -68,22 +68,6 @@ document.getElementById('panelHead').onclick = ()=>{
   p.classList.toggle('closed');
   document.getElementById('toggleHint').textContent = p.classList.contains('closed') ? 'show' : 'hide';
 };
-document.getElementById('dFrom').onchange = refilter;
-document.getElementById('dTo').onchange = refilter;
-document.getElementById('allTime').onclick = ()=>{
-  if(!D) return;
-  document.getElementById('dFrom').value = new Date((D.t0+D.t[0])*1000).toISOString().slice(0,10);
-  document.getElementById('dTo').value   = new Date((D.t0+D.t[D.n-1])*1000).toISOString().slice(0,10);
-  refilter();
-};
-document.getElementById('lastYear').onclick = ()=>{
-  if(!D) return;
-  const end = new Date((D.t0+D.t[D.n-1])*1000);
-  const start = new Date(end); start.setUTCFullYear(end.getUTCFullYear()-1);
-  document.getElementById('dFrom').value = start.toISOString().slice(0,10);
-  document.getElementById('dTo').value   = end.toISOString().slice(0,10);
-  refilter();
-};
 ['t-all','t-cg','t-cc'].forEach(id=> document.getElementById(id).onchange = refilter);
 document.getElementById('cap').onchange = refilter;
 ['iMin','iMax'].forEach(id=>{
@@ -102,10 +86,16 @@ document.getElementById('ptBright').oninput = ()=>{
   updateColorUI();
 };
 document.getElementById('palette').onchange = e=>{
+  single.on = e.target.value === 'single';
   const p = PALETTES[e.target.value];
-  if(!p) return;
-  p.forEach((c,k)=> CLASSES[k].color = c);
-  saveColors();
+  if(p){ p.forEach((c,k)=> CLASSES[k].color = c); saveColors(); }
+  saveSingle();
+  updateColorUI();
+  strikes.redraw();
+};
+document.getElementById('singleColor').oninput = e=>{
+  single.color = e.target.value;
+  saveSingle();
   updateColorUI();
   strikes.redraw();
 };

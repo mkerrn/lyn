@@ -21,15 +21,15 @@
   <div id="body">
 
     <section>
-      <h2>Period</h2>
-      <div class="row">
-        <input type="date" id="dFrom">
-        <input type="date" id="dTo">
-      </div>
+      <h2>Years</h2>
+      <div class="years" id="years"></div>
       <div class="actions" style="margin-top:0">
-        <button class="btn" id="allTime">Whole archive</button>
-        <button class="btn" id="lastYear">Last 12 months</button>
+        <button class="btn" id="yAll">All</button>
+        <button class="btn" id="yNone">None</button>
+        <button class="btn" id="yLast">Latest</button>
       </div>
+      <p class="note" id="dataStatus">…</p>
+      <p class="note">Click a year to toggle it, or press and drag across several to set them all the same way. Each year is downloaded the first time it is switched on and kept after that.</p>
       <h2 style="margin:14px 0 8px">Months</h2>
       <div class="months" id="months"></div>
       <div class="actions" style="margin-top:0">
@@ -37,7 +37,7 @@
         <button class="btn" id="mSummer">Jun–Aug</button>
         <button class="btn" id="mWinter">Nov–Feb</button>
       </div>
-      <p class="note">Cuts across years: leave the range at 2016–2025 and tick only June and July to stack ten summers on one map.</p>
+      <p class="note">Cuts across years: keep every year on and tick only June and July to stack ten summers on one map.</p>
       <h2 style="margin:14px 0 8px">Days of the year</h2>
       <div class="row">
         <input type="text" id="dayFrom" class="day" placeholder="15/8" inputmode="numeric">
@@ -45,7 +45,7 @@
         <input type="text" id="dayTo" class="day" placeholder="15/9" inputmode="numeric">
         <button class="btn" id="dayClear">Clear</button>
       </div>
-      <p class="note">Day/month, in every year in the range. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
+      <p class="note">Day/month, in every year selected. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
     </section>
 
     <section>
@@ -149,12 +149,17 @@
       <div class="row">
         <label for="palette">Colours</label>
         <select id="palette">
+          <option value="single">one colour</option>
           <option value="fire">fire</option>
           <option value="viridis">viridis</option>
           <option value="ice">ice</option>
           <option value="neon">neon</option>
           <option value="custom" disabled>custom</option>
         </select>
+      </div>
+      <div class="row" id="singleRow">
+        <label for="singleColor">Colour for every strike</label>
+        <input type="color" id="singleColor" value="#f2c14e">
       </div>
       <div class="legend" id="legend"></div>
       <p class="note">Absolute value of the peak current in kA. Click a class to hide it, click its swatch to change its colour, or type a range above. Negative strokes are the ordinary kind; positive ones are rarer, often stronger, and carry more charge.</p>
@@ -194,12 +199,9 @@
     </section>
 
     <section>
-      <h2>Years</h2>
-      <div id="years"></div>
-      <p class="note" id="dataStatus">…</p>
-      <p class="note">Each year is downloaded the first time you tick it and kept after that. Ticking several at once is what makes the tab heavy, so add them one at a time.</p>
+      <h2>Open a file</h2>
       <input type="file" id="dataFile" accept=".bin,.gz">
-      <p class="note">Or open a LYN1 file from disk. Nothing is uploaded anywhere; it is read in your browser.</p>
+      <p class="note">Open a LYN1 file from disk instead of the years above. Nothing is uploaded anywhere; it is read in your browser.</p>
     </section>
 
     <section style="border-top:1px solid var(--line);padding-top:12px">

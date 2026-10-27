@@ -10,7 +10,7 @@ and JS: no build step, no server.
 - `js/` — classic scripts sharing one global scope, loaded in this order:
   - `map.js` — map and base layers, current classes, `shade`, `pct`.
   - `data.js` — LYN1 parsing, gunzip, merging years, the year list.
-  - `filter.js` — `refilter()`: dates, months or days of the year, type,
+  - `filter.js` — `refilter()`: months or days of the year, type,
     current, legend → `groups`.
   - `strikes.js` — the canvas layer: points, ellipses, density, sampling.
   - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
@@ -21,8 +21,9 @@ and JS: no build step, no server.
 - `split_years.py` — cuts that file into one per year under `data/`, with an
   `index.json` the map reads to build its year list.
 
-The map never loads the whole archive. It reads `data/index.json`, shows a
-checkbox per year, and downloads a year the first time you tick it.
+The map reads `data/index.json`, shows a button per year with every year on,
+and downloads each year the first time it is switched on. Press and drag
+across the year buttons to switch several on or off at once.
 
 ## Try it before you have data
 

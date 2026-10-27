@@ -59,6 +59,13 @@ input[type=file]::file-selector-button{
   border:1px solid var(--line);border-radius:3px;cursor:pointer;
 }
 .months button.off{opacity:.3}
+.years{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-bottom:8px;touch-action:none;user-select:none}
+.years button{
+  padding:5px 0;font-size:11px;background:var(--panel-2);color:var(--text);font-variant-numeric:tabular-nums;
+  border:1px solid var(--line);border-radius:3px;cursor:pointer;
+}
+.years button.off{opacity:.3}
+.years button:hover{border-color:var(--snow)}
 .months button:hover{border-color:var(--snow)}
 
 .band{display:grid;grid-template-columns:44px 10px 44px 1fr 24px;gap:6px;align-items:center;margin-bottom:6px}

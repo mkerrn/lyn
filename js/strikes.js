@@ -167,7 +167,7 @@ const StrikeLayer = L.Layer.extend({
     const r = z < 7 ? 1 : z < 10 ? 1.4 : z < 13 ? 2 : 2.6;
     const squares = shown > 60000;
     const bright = +document.getElementById('ptBright').value;
-    const paint = CLASSES.map(c=> shade(c.color, bright));
+    const paint = CLASSES.map((c,k)=> shade(classColor(k), bright));
 
     const wx = D.wx, wy = D.wy, smaj = D.smaj, smin = D.smin, ang = D.ang;
 
