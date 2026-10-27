@@ -19,8 +19,10 @@ the years are averaged, and the months or day range pick which half-months
 take part: counts and amounts are added up over them and shown per year (with
 Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
 the like are averaged. The lightning-only sections of the panel hide on a grid
-layer. More layers — temperature, wind, rain, snow, sun — are planned in
-`PLAN.md`.
+layer. Temperature, feels like, wind, humidity, rain and snow are built by
+`fetch_climate.py` (below), but their files are not in the repository yet, as
+all ten years come to several hundred MB. The sun layers and more are planned
+in `PLAN.md`.
 
 ## Files
 
@@ -45,8 +47,11 @@ layer. More layers — temperature, wind, rain, snow, sun — are planned in
   `index.json` the map reads to build its year list.
 - `make_thunder_days.py` — the thunderstorm-days layer from the per-year
   lightning files, written to `data/wx/`.
+- `fetch_climate.py` — the temperature, feels-like, wind, humidity, rain and
+  snow layers from the MET Nordic analysis, written to `data/wx/`.
 - `wxgrid.py` — shared helpers for the grid layers: the cell grid, half-months,
-  local solar days, writing `WXG1` and updating `data/wx/index.json`.
+  local solar days, the MET Nordic projection, the sun's elevation, writing
+  `WXG1` and updating `data/wx/index.json`.
 
 The map reads `data/index.json`, shows a button per year with every year on,
 and downloads each year the first time it is switched on. Press and drag
@@ -263,6 +268,32 @@ cloud-to-cloud, lands within 10 km of its centre during one local solar day
 (UTC + longitude/15 h). The area is the box round all the lightning, sea
 included, so this is the one grid layer without a land mask; detection drops
 far offshore. It writes 3–4 MB in all.
+
+Temperature, feels like, wind, humidity, rain and snow, from the MET Nordic
+analysis (hourly, 1 km) on thredds.met.no:
+
+```
+python3 fetch_climate.py                                   # 2016–2025, about 9 hours
+python3 fetch_climate.py --from 2019-01-01 --to 2019-01-31 --layers temp,rain
+python3 fetch_climate.py --write-only                      # rewrite data/wx/ from the cache
+```
+
+It reads every second point of the analysis by OPeNDAP, about the cell size,
+and gives each land cell the point nearest its centre (land is where the
+analysis counts at least half land; lakes are land). Days run in local solar
+time. The hours are turned into daily stats and the days into half-month sums,
+kept in `cache/wx/<area>/<layer>/` so a stopped run picks up where it was; the
+raw hours are never stored. The area is the one the thunderstorm days made,
+so run `make_thunder_days.py` first. Six downloads are in flight at once;
+thredds.met.no allows no more than 4–8.
+
+- Temperature: day and night are the mean daily highest and lowest.
+- Feels like: wind chill below 10 °C, Steadman's apparent temperature above.
+- Wind: the mean of each day's strongest hourly wind at 10 m; there are no gusts.
+- Humidity: over the whole day and over the hours the sun is up.
+- Rain and snow: hourly precipitation split by temperature, all snow at 0 °C
+  and below, all rain at 2 °C and above. Amounts in mm (snow in mm of water,
+  about 1 cm of fresh snow each), and days with at least 1 or 10 mm.
 
 ### The `WXG1` format
 

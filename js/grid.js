@@ -264,24 +264,28 @@ const WxCanvas = StrikeLayer.extend({
     const origin = m.getPixelOrigin(), topLeft = m.containerPointToLayerPoint([0,0]);
     const ox = origin.x + topLeft.x, oy = origin.y + topLeft.y, W = size.x, H = size.y;
 
-    /* The cells in view, and their range for the unfixed scale. */
-    const views = [];
-    let lo = Infinity, hi = -Infinity;
+    /* The cells in view, and their range for the unfixed scale: the 1st to
+       99th percentile, as rain and snow are so skewed that the wettest few
+       cells would leave the rest of the map pale. */
+    const views = [], seen = [];
     for(const A of wxCur.areas){
       const g = A.area, px = S/Math.pow(2, g.L);
       const a = Math.max(0, Math.floor(ox/px) - g.x0), b = Math.min(g.nx-1, Math.floor((ox+W)/px) - g.x0);
       const c0 = Math.max(0, Math.floor(oy/px) - g.y0), d = Math.min(g.ny-1, Math.floor((oy+H)/px) - g.y0);
       if(a > b || c0 > d) continue;
       views.push({A, px, a, b, c:c0, d});
-      for(let y=c0;y<=d;y++){
+      const step = Math.max(1, Math.round(Math.sqrt((b-a+1)*(d-c0+1)/40000)));
+      for(let y=c0;y<=d;y+=step){
         const row = y*g.nx;
-        for(let x=a;x<=b;x++){
+        for(let x=a;x<=b;x+=step){
           const v = A.vals[row+x];
-          if(v < lo) lo = v;
-          if(v > hi) hi = v;
+          if(v === v) seen.push(v);
         }
       }
     }
+    const sorted = Float32Array.from(seen).sort();
+    let lo = sorted.length ? sorted[Math.floor(0.01*(sorted.length-1))] : Infinity;
+    let hi = sorted.length ? sorted[Math.ceil(0.99*(sorted.length-1))] : -Infinity;
     if(document.getElementById('wxFix').checked){
       const fl = parseFloat(document.getElementById('wxMin').value), fh = parseFloat(document.getElementById('wxMax').value);
       if(!isNaN(fl) && !isNaN(fh) && fh > fl){ lo = fl; hi = fh; }

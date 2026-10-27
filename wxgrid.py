@@ -48,6 +48,44 @@ def cell_centres(L, x0, y0, nx, ny):
     return lat, lon
 
 
+# ---------- MET Nordic ----------
+# Lambert conformal on a sphere, tangent at 63°N, centred on 15°E; 1 km
+# points, row 0 at the south edge.
+
+LCC_R, LCC_LAT, LCC_LON = 6371000.0, 63.0, 15.0
+LCC_X0, LCC_Y0, LCC_NX, LCC_NY = -897442.2, -1104322.0, 1796, 2321
+
+
+def lcc_index(lat, lon):
+    """Lat/lon to fractional column and row of the MET Nordic grid."""
+    p = np.radians(LCC_LAT)
+    n = np.sin(p)
+    F = np.cos(p) * np.tan(np.pi / 4 + p / 2) ** n / n
+    rho0 = LCC_R * F / np.tan(np.pi / 4 + p / 2) ** n
+    rho = LCC_R * F / np.tan(np.pi / 4 + np.radians(lat) / 2) ** n
+    th = n * np.radians(np.asarray(lon) - LCC_LON)
+    return (rho * np.sin(th) - LCC_X0) / 1000, (rho0 - rho * np.cos(th) - LCC_Y0) / 1000
+
+
+# ---------- the sun ----------
+
+def sun_elevation(t, lat, lon):
+    """Solar elevation in degrees at unix seconds t (NOAA's short series)."""
+    t = np.asarray(t, dtype=np.float64)
+    s = t.astype("datetime64[s]")
+    doy = (s - s.astype("datetime64[Y]")).astype(np.float64) / 86400
+    g = 2 * np.pi / 365 * doy
+    decl = (0.006918 - 0.399912 * np.cos(g) + 0.070257 * np.sin(g) - 0.006758 * np.cos(2 * g)
+            + 0.000907 * np.sin(2 * g) - 0.002697 * np.cos(3 * g) + 0.00148 * np.sin(3 * g))
+    eqt = 229.18 * (0.000075 + 0.001868 * np.cos(g) - 0.032077 * np.sin(g)
+                    - 0.014615 * np.cos(2 * g) - 0.040849 * np.sin(2 * g))
+    tst = (t % 86400) / 60 + eqt + 4 * np.asarray(lon)
+    ha = np.radians(tst / 4 - 180)
+    la = np.radians(lat)
+    s = np.sin(la) * np.sin(decl) + np.cos(la) * np.cos(decl) * np.cos(ha)
+    return np.degrees(np.arcsin(np.clip(s, -1, 1)))
+
+
 # ---------- time ----------
 
 def solar_days(t, lon):

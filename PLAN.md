@@ -242,7 +242,7 @@ No new downloads.
 
 ### Session 2 — MET Nordic pipeline for Norway, and the non-sun layers
 
-- [ ] **Probe first.** Time and size one hour of the needed variables for the
+- [x] **Probe first.** Time and size one hour of the needed variables for the
       Norway box, by OPeNDAP with a stride of 2 (2 km, as the level-13 grid)
       and by NCSS if THREDDS offers it for this archive, with compressed
       NetCDF4 output.
@@ -253,7 +253,23 @@ No new downloads.
         for temperature and precipitation with fewer hours for the rest, or
         ERA5-Land.
       - Write what you measured here.
-- [ ] `fetch_climate.py`:
+      - **Measured (2026-10-27).** NCSS is listed in the catalog but answers
+        503 for every request, so it is out. Whole files are 110 MB an hour
+        (all variables, 1 km), about 10 TB for ten years, also out. OPeNDAP
+        `.dods` at stride 2 works and needs no extra packages (the binary
+        reply is parsed with numpy).
+      - The `no` area (the lightning bounding box) holds 309 000 land cells
+        at level 13: Norway, Sweden, Finland and a little of Denmark and the
+        Baltics, not only Norway. The block downloaded each hour is
+        851 × 736 points; the four variables these layers need (t, rh, wind,
+        precipitation) are 10 MB an hour.
+      - Throughput tops out at about 28 MB/s whatever the number of parallel
+        requests (4 and 8 gave the same). A half-month takes about 135 s with
+        6 in flight, so ten years take about 9 h. Under a day, so it runs.
+      - The hourly fields come back in the dataset's order, not the order
+        asked for, and a reply is now and then cut short: the reader orders
+        them by the DDS header and checks every array's length.
+- [x] `fetch_climate.py`:
       - Download hour by hour and resample LCC to the level-13 cells. Nearest,
         or the mean of the 1 km points inside each cell.
       - Accumulate the daily stats in memory and discard the raw hours.
@@ -267,7 +283,7 @@ No new downloads.
       Jotunheimen, a wet Vestland), then start the full run in the background
       or leave the user the command. It may outlive the session; the session
       can end once one full year is built and shown.
-- [ ] Layers: Temperature, Feels like, Wind, Humidity, Rain, Snow, as in the
+- [x] Layers: Temperature, Feels like, Wind, Humidity, Rain, Snow, as in the
       table.
 - [ ] Measure the data size and act on *Size and hosting* before committing
       the data.
@@ -333,3 +349,14 @@ No new downloads.
   (cells, half-months, solar days, `WXG1` writer, index update) are in
   `wxgrid.py` for `fetch_climate.py` to reuse. Sequential ramps fade to
   mostly see-through at the low end, so empty cells don't veil the base map.
+- 2026-10-27, session 2: the climate layers use the same `no` area as the
+  thunderstorm days, so they cover all land in the box (the Nordics), not
+  only Norway: the download is the same block either way. The cache keeps
+  half-month sums per layer (`cache/wx/no/<layer>/<year>-<period>.npz`)
+  rather than single days, and a stopped run redoes at most one half-month;
+  daily files would be about 13 GB. Hours are given to the solar day of the
+  half hour before their time stamp, as precipitation is for the hour
+  before. The automatic colour scale now runs from the 1st to the 99th
+  percentile of the cells in view, as rain and snow are too skewed for
+  min–max. The half-month bar chart stands on a zero line, for temperatures
+  below zero.
