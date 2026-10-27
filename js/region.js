@@ -1,5 +1,5 @@
 /* Region: draw a rectangle or a freehand outline, and chart the hour of day
-   of every strike in the filter that falls inside it. */
+   and the time of year of every strike in the filter that falls inside it. */
 
 /* ---------- the region ---------- */
 /* Kept in the same normalised mercator units as D.wx / D.wy, so the test
@@ -162,7 +162,67 @@ function hourOf(i, tz){
   return Math.floor((((t % 86400) + 86400) % 86400)/3600);
 }
 
-/* ---------- the chart ---------- */
+/* ---------- which part of the year ---------- */
+/* The months in the filter, in calendar order but starting after a gap, so
+   a winter of Nov–Feb reads left to right. The day range, when set, picks
+   the months it touches. Fewer months get finer bars: halves under ten,
+   quarters at three or fewer. Feb counts 29 days, as in the day filter. */
+const MONTH_DAYS = [31,29,31,30,31,30,31,31,30,31,30,31];
+function seasonBins(){
+  const on = new Array(12).fill(false);
+  const dr = dayRange();
+  let first = 0;
+  if(dr){
+    const a = dr.lo >> 5, b = dr.hi >> 5;
+    for(let m=a;;m=(m+1)%12){ on[m] = true; if(m === b) break; }
+    first = a;
+  } else {
+    for(let m=0;m<12;m++) on[m] = monthOn[m];
+    for(let m=0;m<12;m++) if(on[m] && !on[(m+11)%12]){ first = m; break; }
+  }
+  const months = [];
+  for(let j=0;j<12;j++){ const m = (first+j)%12; if(on[m]) months.push(m); }
+  const parts = months.length >= 10 ? 1 : months.length > 3 ? 2 : 4;
+  const slot = new Int16Array(12).fill(-1);
+  months.forEach((m,j)=> slot[m] = j*parts);
+  return {months, parts, slot};
+}
+function seasonBin(s, md){
+  const m = md >> 5, base = s.slot[m];
+  if(base < 0) return -1;
+  return base + Math.min(s.parts-1, Math.floor(((md & 31)-1)*s.parts/MONTH_DAYS[m]));
+}
+function seasonLabel(s, b){
+  const m = s.months[Math.floor(b/s.parts)], p = b % s.parts, L = MONTH_DAYS[m];
+  if(s.parts === 1) return MONTHS[m];
+  return MONTHS[m]+' '+(Math.floor(p*L/s.parts)+1)+'–'+Math.floor((p+1)*L/s.parts);
+}
+
+/* ---------- the charts ---------- */
+/* One bar chart: counts, the label under bar b (or null), the tooltip name of
+   bar b, a title for the top left and the unit for the peak at the top right. */
+function barChart(counts, n, tick, name, title, unit){
+  const nb = counts.length;
+  let best = 0;
+  for(let b=0;b<nb;b++) if(counts[b] > best) best = counts[b];
+  const w = 260, ch = 90, pad = 4, bw = (w - 2*pad)/nb;
+  let svg = '<svg viewBox="0 0 '+w+' '+(ch+14)+'" xmlns="http://www.w3.org/2000/svg">';
+  for(let b=0;b<nb;b++){
+    const bh = best ? counts[b]/best*(ch-10) : 0;
+    const x = pad + b*bw;
+    svg += '<rect x="'+(x+0.5).toFixed(1)+'" y="'+(ch-bh).toFixed(1)+'" width="'+Math.max(0.5, bw-1).toFixed(1)+
+           '" height="'+bh.toFixed(1)+'" fill="#e2652f" opacity="0.85"><title>'+
+           name(b)+' · '+counts[b].toLocaleString('en')+' strikes · '+pct(counts[b]/n)+'</title></rect>';
+    const t = tick(b);
+    if(t !== null)
+      svg += '<text x="'+x.toFixed(1)+'" y="'+(ch+11)+'" font-size="8" fill="#93aab5">'+t+'</text>';
+  }
+  svg += '<line x1="'+pad+'" y1="'+ch+'" x2="'+(w-pad)+'" y2="'+ch+'" stroke="#2e4a58"/>';
+  svg += '<text x="'+pad+'" y="8" font-size="8" fill="#93aab5">'+title+'</text>';
+  svg += '<text x="'+(w-pad)+'" y="8" text-anchor="end" font-size="8" fill="#93aab5">peak '+pct(best/n)+' per '+unit+'</text>';
+  return svg + '</svg>';
+}
+
 function regionHours(){
   const host = document.getElementById('regionChart');
   if(!region.xs){
@@ -172,6 +232,8 @@ function regionHours(){
   if(!D){ host.innerHTML = '<p class="cap">No strikes loaded.</p>'; return; }
   const tz = document.getElementById('hourTz').value;
   const hours = new Float64Array(24);
+  const s = seasonBins();
+  const season = new Float64Array(s.months.length*s.parts);
   let n = 0;
   for(let k=0;k<NCLASS;k++){
     const g = groups[k]; if(!g) continue;
@@ -179,6 +241,8 @@ function regionHours(){
       const i = g[j];
       if(!inRegion(D.wx[i], D.wy[i])) continue;
       hours[hourOf(i, tz)]++; n++;
+      const b = seasonBin(s, D.md[i]);
+      if(b >= 0) season[b]++;
     }
   }
   const km2 = regionKm2();
@@ -190,26 +254,20 @@ function regionHours(){
 
   let best = 0, peak = 0;
   for(let h=0;h<24;h++) if(hours[h] > best){ best = hours[h]; peak = h; }
-  const w = 260, ch = 90, pad = 4, bw = (w - 2*pad)/24;
-  let svg = '<svg viewBox="0 0 '+w+' '+(ch+14)+'" xmlns="http://www.w3.org/2000/svg">';
-  for(let h=0;h<24;h++){
-    const bh = hours[h]/best*(ch-10);
-    const x = pad + h*bw;
-    svg += '<rect x="'+(x+0.5).toFixed(1)+'" y="'+(ch-bh).toFixed(1)+'" width="'+(bw-1).toFixed(1)+
-           '" height="'+bh.toFixed(1)+'" fill="#e2652f" opacity="0.85"><title>'+
-           String(h).padStart(2,'0')+':00–'+String(h+1).padStart(2,'0')+':00 · '+
-           hours[h].toLocaleString('en')+' strikes · '+pct(hours[h]/n)+'</title></rect>';
-    if(h % 3 === 0)
-      svg += '<text x="'+x.toFixed(1)+'" y="'+(ch+11)+'" font-size="8" fill="#93aab5">'+String(h).padStart(2,'0')+'</text>';
-  }
-  svg += '<line x1="'+pad+'" y1="'+ch+'" x2="'+(w-pad)+'" y2="'+ch+'" stroke="#2e4a58"/>';
-  svg += '<text x="'+(w-pad)+'" y="8" text-anchor="end" font-size="8" fill="#93aab5">peak '+pct(best/n)+' per hour</text>';
-  svg += '</svg>';
+  const hh = h=> String(h).padStart(2,'0');
+  const hourSvg = barChart(hours, n, h=> h % 3 === 0 ? hh(h) : null,
+                           h=> hh(h)+':00–'+hh(h+1)+':00', 'hour of day', 'hour');
+  const unit = s.parts === 1 ? 'month' : s.parts === 2 ? 'half month' : 'quarter month';
+  const seasonSvg = barChart(season, n,
+                             b=> b % s.parts === 0 ? MONTHS[s.months[b/s.parts]] : null,
+                             b=> seasonLabel(s, b), 'time of year', unit);
 
-  host.innerHTML = svg +
+  host.innerHTML = hourSvg +
     '<p class="cap">' + n.toLocaleString('en') + ' strikes in ' + area + ' km², by hour of ' +
-    HOUR_LABEL[tz] + '. Busiest hour ' + String(peak).padStart(2,'0') + ':00–' +
-    String(peak+1).padStart(2,'0') + ':00. Uses every strike in the filter, not the drawn sample.</p>';
+    HOUR_LABEL[tz] + '. Busiest hour ' + hh(peak) + ':00–' + hh(peak+1) +
+    ':00. Uses every strike in the filter, not the drawn sample.</p>' +
+    seasonSvg +
+    '<p class="cap">The same strikes by ' + unit + ' (UTC date), across every year selected.</p>';
 }
 
 document.getElementById('rgRect').onclick = ()=> setDrawMode(region.mode === 'rect' ? null : 'rect');
