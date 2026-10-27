@@ -18,3 +18,9 @@ The file list in README.md says what is in each. Shared state lives in globals:
 `D` (the dataset, `data.js`), `groups` / `groupTiles` / `filtered` (`filter.js`),
 `map`, `CLASSES`, `classOn` (`map.js`), `strikes` (`strikes.js`). Use grep for
 an element id or function name rather than reading whole files.
+
+## Ongoing work
+
+The map is being extended into "Weather history" with climate layers. The plan,
+split into sessions with checkboxes, is in `PLAN.md`. Pick up the first session
+with unticked boxes, and tick them in the same commit as the work.
