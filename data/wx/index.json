@@ -53,6 +53,186 @@
      "0": "data/wx/thunder-no-mean.bin.gz"
     }
    }
+  },
+  {
+   "id": "temp",
+   "label": "Temperature",
+   "note": "Day is the mean of the daily highest temperature, night the mean of the daily lowest, at 2 m, in local solar time.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "tmax",
+     "label": "Day",
+     "unit": "°C",
+     "agg": "mean",
+     "ramp": "temp"
+    },
+    {
+     "id": "tmin",
+     "label": "Night",
+     "unit": "°C",
+     "agg": "mean",
+     "ramp": "temp"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/temp-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/temp-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/temp-no-mean.bin.gz"
+    }
+   }
+  },
+  {
+   "id": "feels",
+   "label": "Feels like",
+   "note": "Hourly apparent temperature: wind chill below 10 °C, Steadman's apparent temperature from temperature, humidity and wind above. Day is the mean daily highest, night the mean daily lowest. Shade and sun are not counted.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "fmax",
+     "label": "Day",
+     "unit": "°C",
+     "agg": "mean",
+     "ramp": "temp"
+    },
+    {
+     "id": "fmin",
+     "label": "Night",
+     "unit": "°C",
+     "agg": "mean",
+     "ramp": "temp"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/feels-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/feels-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/feels-no-mean.bin.gz"
+    }
+   }
+  },
+  {
+   "id": "wind",
+   "label": "Wind",
+   "note": "The mean of each day's strongest hourly wind at 10 m. MET Nordic has no gusts, so gusts run well above this.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "wmax",
+     "label": "Daily strongest wind",
+     "unit": "m/s",
+     "agg": "mean",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/wind-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/wind-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/wind-no-mean.bin.gz"
+    }
+   }
+  },
+  {
+   "id": "humid",
+   "label": "Humidity",
+   "note": "Relative humidity at 2 m, over the whole day and over the hours with the sun above the horizon. Polar night has no daylight hours.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "rh",
+     "label": "All day",
+     "unit": "%",
+     "agg": "mean",
+     "ramp": "seq"
+    },
+    {
+     "id": "rhday",
+     "label": "Daylight",
+     "unit": "%",
+     "agg": "mean",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/humid-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/humid-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/humid-no-mean.bin.gz"
+    }
+   }
+  },
+  {
+   "id": "rain",
+   "label": "Rain",
+   "note": "Precipitation that falls as rain: all of it at 2 °C and above, none at 0 °C and below, a share in between. The rest is under Snow.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "mm",
+     "label": "Amount",
+     "unit": "mm",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d1",
+     "label": "Days ≥ 1 mm",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d10",
+     "label": "Days ≥ 10 mm",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/rain-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/rain-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/rain-no-mean.bin.gz"
+    }
+   }
+  },
+  {
+   "id": "snow",
+   "label": "Snow",
+   "note": "Precipitation that falls as snow, in mm of water: all of it at 0 °C and below, none at 2 °C and above. 1 mm is roughly 1 cm of fresh snow.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "bands": [
+    {
+     "id": "mm",
+     "label": "Amount (water)",
+     "unit": "mm",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d1",
+     "label": "Days ≥ 1 mm",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/snow-no-2016.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/snow-no-2019.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/snow-no-mean.bin.gz"
+    }
+   }
   }
  ]
 }
