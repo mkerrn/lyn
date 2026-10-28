@@ -279,10 +279,15 @@ No new downloads.
       - Run several downloads in parallel, but no more than 4–8 at once
         against thredds.met.no.
       - `--from`, `--to`, `--area`, `--layers`.
-- [ ] Test on one month, check the maps against expectation (a cold
+- [x] Test on one month, check the maps against expectation (a cold
       Jotunheimen, a wet Vestland), then start the full run in the background
       or leave the user the command. It may outlive the session; the session
       can end once one full year is built and shown.
+      Done: 2016 is built and served from `weatherdata`. In 2016, Bergen got
+      2270 mm of rain, Oslo 673 mm plus 143 mm as snow, and Karasjok's
+      January nights averaged −25 °C. When the full run ends, run
+      `fetch_climate.py --write-only`, then push `weatherdata` (replacing its
+      history, see its README) and `data/wx/index.json`.
 - [x] Layers: Temperature, Feels like, Wind, Humidity, Rain, Snow, as in the
       table.
 - [x] Measure the data size and act on *Size and hosting* before committing
