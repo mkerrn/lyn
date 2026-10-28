@@ -10,7 +10,7 @@ straight away. No need to ask first.
 - Keep commit messages short and lowercase, like the existing history.
 - Never commit `cache/`, the big combined `.bin.gz`, or a Frost client ID.
 - The climate layer files are not committed here: they go to the data repo
-  `mkerrn/lyn-data`, cloned at `../lyn-data`, and are pushed from there.
+  `mkerrn/weatherdata`, cloned at `../weatherdata`, and are pushed from there.
   Only `data/wx/index.json` (which points at them) is committed here.
   Run `git status --ignored` if in doubt.
 

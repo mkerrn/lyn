@@ -36,8 +36,8 @@ MIN_HOURS = 18         # a cell-day with fewer hours than this is left out
 THREDDS = "https://thredds.met.no/thredds/dodsC/"
 RERUN_END = np.datetime64("2025-11-01")  # metpparchivev4 runs to the end of October 2025
 CACHE = "cache/wx"
-OUT = "../lyn-data/wx"
-URL = "https://mkerrn.github.io/lyn-data/wx"
+OUT = "../weatherdata/wx"
+URL = "https://mkerrn.github.io/weatherdata/wx"
 
 CREDIT = "MET Nordic analysis © Meteorologisk institutt"
 VARS = {"t": "air_temperature_2m", "rh": "relative_humidity_2m",
@@ -140,12 +140,14 @@ def dods(url, names, sl, size=None):
     """Variables from one OPeNDAP .dods request, as flat float32 arrays.
     None if the file doesn't exist (an hour missing from the archive), or if
     the server keeps failing for about ten minutes: that hour is then left
-    out rather than stopping a run of many hours.
+    out rather than stopping a run of many hours. With no network at all it
+    waits for as long as it takes, so a dropped connection loses nothing.
     size: the number of values each array should have."""
     s = getattr(_local, "s", None) or requests.Session()
     _local.s = s
     q = ",".join(f"{n}.{n}{sl}" for n in names)
-    for attempt in range(9):
+    attempt = 0
+    while True:
         try:
             r = s.get(f"{url}.dods?{q}", timeout=180)
             if r.status_code == 404:
@@ -166,11 +168,47 @@ def dods(url, names, sl, size=None):
                 if len(out[n]) != (size or cnt):
                     raise ValueError(f"short response from {url}")      # a cut connection: try again
             return out
-        except (requests.RequestException, ValueError) as e:
-            if attempt == 8:
-                print(f"    giving up on {url.rsplit('/', 1)[-1]}: {e}", flush=True)
-                return None
-            time.sleep(min(5 * 2 ** attempt, 120))
+        except (requests.ConnectionError, requests.Timeout):
+            if not online():
+                wait_online()
+                continue
+            e = "no reply"
+        except (requests.RequestException, ValueError) as err:
+            e = err
+        attempt += 1
+        if attempt == 9:
+            print(f"    giving up on {url.rsplit('/', 1)[-1]}: {e}", flush=True)
+            return None
+        time.sleep(min(5 * 2 ** (attempt - 1), 120))
+
+
+def online():
+    """Whether the network is up at all, as against thredds.met.no failing."""
+    for host in ("https://www.met.no", "https://github.com"):
+        try:
+            requests.head(host, timeout=10)
+            return True
+        except requests.RequestException:
+            pass
+    return False
+
+
+_offline = threading.Lock()
+
+
+def wait_online():
+    """Blocks until the network is back; one thread reports it."""
+    if _offline.acquire(blocking=False):
+        try:
+            print("    network down, waiting for it", flush=True)
+            while not online():
+                time.sleep(30)
+            print("    network back", flush=True)
+        finally:
+            _offline.release()
+    else:
+        with _offline:
+            pass
 
 
 def hour_url(h):

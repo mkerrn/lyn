@@ -288,7 +288,7 @@ No new downloads.
 - [x] Measure the data size and act on *Size and hosting* before committing
       the data. About 40 MB a year for the six layers over the `no` area,
       roughly 450 MB with the mean files. The user chose a separate data
-      repo: `mkerrn/lyn-data`, cloned at `../lyn-data`, served by GitHub
+      repo: `mkerrn/weatherdata`, cloned at `../weatherdata`, served by GitHub
       Pages.
 
 ### Session 3 — sun
@@ -364,8 +364,17 @@ No new downloads.
   min–max. The half-month bar chart stands on a zero line, for temperatures
   below zero.
 - 2026-10-28, session 2: the climate files live in the data repo
-  `mkerrn/lyn-data` (GitHub Pages), as ten years over the Nordics come to
-  about 450 MB. `fetch_climate.py` writes to `../lyn-data/wx/`, and
+  `mkerrn/weatherdata` (GitHub Pages), as ten years over the Nordics come to
+  about 450 MB. `fetch_climate.py` writes to `../weatherdata/wx/`, and
   `data/wx/index.json` in this repo lists their Pages URLs. Thunderstorm days
   stay here. An hour the server keeps failing on for about ten minutes is
   left out and logged, rather than stopping the run.
+- 2026-10-28, session 2: the data repo is `mkerrn/weatherdata` (the user's
+  name for it). Source checked: thredds.met.no has a valid certificate issued
+  to Meteorologisk institutt, and MET Norway's own MET Nordic docs
+  (github.com/metno/NWPdocs) name `metpparchivev4` as the recommended archive,
+  to be continued with `metpparchive`. The docs' long-term consistent archive
+  (`metppltcarchivev1`) is experimental and not corrected with observations,
+  so it is not used. The docs say quality is lower before 2016-11-08 (an older
+  model), which affects most of 2016. With the network down the fetcher now
+  waits instead of skipping hours.

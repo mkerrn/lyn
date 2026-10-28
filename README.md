@@ -21,7 +21,7 @@ Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
 the like are averaged. The lightning-only sections of the panel hide on a grid
 layer. Temperature, feels like, wind, humidity, rain and snow are built by
 `fetch_climate.py` (below). Their files are too big for this repository and
-live in [mkerrn/lyn-data](https://github.com/mkerrn/lyn-data), served by GitHub
+live in [mkerrn/weatherdata](https://github.com/mkerrn/weatherdata), served by GitHub
 Pages; `data/wx/index.json` points there. The sun layers and more are planned
 in `PLAN.md`.
 
@@ -279,7 +279,7 @@ python3 fetch_climate.py --from 2019-01-01 --to 2019-01-31 --layers temp,rain
 python3 fetch_climate.py --write-only                      # rewrite the files from the cache
 ```
 
-The files go to `../lyn-data/wx/`, a clone of the data repository next to this
+The files go to `../weatherdata/wx/`, a clone of the data repository next to this
 one, and the index gets their GitHub Pages URLs; commit and push both repos.
 To try a build locally first, use `--out data/wx --url data/wx`, and don't
 commit those files here.
