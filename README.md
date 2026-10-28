@@ -20,8 +20,9 @@ take part: counts and amounts are added up over them and shown per year (with
 Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
 the like are averaged. The lightning-only sections of the panel hide on a grid
 layer. Temperature, feels like, wind, humidity, rain and snow are built by
-`fetch_climate.py` (below), but their files are not in the repository yet, as
-all ten years come to several hundred MB. The sun layers and more are planned
+`fetch_climate.py` (below). Their files are too big for this repository and
+live in [mkerrn/lyn-data](https://github.com/mkerrn/lyn-data), served by GitHub
+Pages; `data/wx/index.json` points there. The sun layers and more are planned
 in `PLAN.md`.
 
 ## Files
@@ -275,8 +276,13 @@ analysis (hourly, 1 km) on thredds.met.no:
 ```
 python3 fetch_climate.py                                   # 2016–2025, about 9 hours
 python3 fetch_climate.py --from 2019-01-01 --to 2019-01-31 --layers temp,rain
-python3 fetch_climate.py --write-only                      # rewrite data/wx/ from the cache
+python3 fetch_climate.py --write-only                      # rewrite the files from the cache
 ```
+
+The files go to `../lyn-data/wx/`, a clone of the data repository next to this
+one, and the index gets their GitHub Pages URLs; commit and push both repos.
+To try a build locally first, use `--out data/wx --url data/wx`, and don't
+commit those files here.
 
 It reads every second point of the analysis by OPeNDAP, about the cell size,
 and gives each land cell the point nearest its centre (land is where the

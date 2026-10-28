@@ -12,8 +12,10 @@ point nearest its centre. Hours are turned into daily stats per cell in local
 solar time (UTC + longitude/15 h), the days into half-month sums, and only
 those are kept: cache/wx/<area>/<layer>/<year>-<period>.npz, so a stopped run
 picks up at the next missing half-month. At the end each layer is written as
-data/wx/<layer>-<area>-<year>.bin.gz, one per year, plus the mean over the
-years, and listed in data/wx/index.json.
+<layer>-<area>-<year>.bin.gz, one per year, plus the mean over the years, and
+listed in data/wx/index.json. The files are too big for this repository, so
+they go to a clone of the data repository next to it (--out), which GitHub
+Pages serves (--url); the index points there.
 
 The area is the one make_thunder_days.py put in the index; land is every 1 km
 point the analysis counts as at least half land, lakes included.
@@ -34,6 +36,8 @@ MIN_HOURS = 18         # a cell-day with fewer hours than this is left out
 THREDDS = "https://thredds.met.no/thredds/dodsC/"
 RERUN_END = np.datetime64("2025-11-01")  # metpparchivev4 runs to the end of October 2025
 CACHE = "cache/wx"
+OUT = "../lyn-data/wx"
+URL = "https://mkerrn.github.io/lyn-data/wx"
 
 CREDIT = "MET Nordic analysis © Meteorologisk institutt"
 VARS = {"t": "air_temperature_2m", "rh": "relative_humidity_2m",
@@ -134,12 +138,14 @@ _local = threading.local()
 
 def dods(url, names, sl, size=None):
     """Variables from one OPeNDAP .dods request, as flat float32 arrays.
-    None if the file doesn't exist (an hour missing from the archive).
+    None if the file doesn't exist (an hour missing from the archive), or if
+    the server keeps failing for about ten minutes: that hour is then left
+    out rather than stopping a run of many hours.
     size: the number of values each array should have."""
     s = getattr(_local, "s", None) or requests.Session()
     _local.s = s
     q = ",".join(f"{n}.{n}{sl}" for n in names)
-    for attempt in range(6):
+    for attempt in range(9):
         try:
             r = s.get(f"{url}.dods?{q}", timeout=180)
             if r.status_code == 404:
@@ -160,10 +166,11 @@ def dods(url, names, sl, size=None):
                 if len(out[n]) != (size or cnt):
                     raise ValueError(f"short response from {url}")      # a cut connection: try again
             return out
-        except (requests.RequestException, ValueError):
-            if attempt == 5:
-                raise
-            time.sleep(5 * 2 ** attempt)
+        except (requests.RequestException, ValueError) as e:
+            if attempt == 8:
+                print(f"    giving up on {url.rsplit('/', 1)[-1]}: {e}", flush=True)
+                return None
+            time.sleep(min(5 * 2 ** attempt, 120))
 
 
 def hour_url(h):
@@ -334,7 +341,7 @@ def encode(v, enc):
     return np.where(np.isnan(v), enc["nodata"], np.clip(raw, 0, hi)).astype(wg.DTYPES[enc["dtype"]])
 
 
-def write_layer(l, area, cells):
+def write_layer(l, area, cells, out, url):
     """Per-year files and the mean file from the cached half-months."""
     spec = LAYERS[l]
     ny_, nx_ = area["ny"], area["nx"]
@@ -367,16 +374,16 @@ def write_layer(l, area, cells):
 
     files, total = {}, 0
     for y, vals in per_year.items():
-        path = f"data/wx/{l}-{area['id']}-{y}.bin.gz"
-        total += wg.write_wxg(path, L, area["x0"], area["y0"], nx_, ny_, y, bands(vals))
-        files[str(y)] = path
+        name = f"{l}-{area['id']}-{y}.bin.gz"
+        total += wg.write_wxg(f"{out}/{name}", L, area["x0"], area["y0"], nx_, ny_, y, bands(vals))
+        files[str(y)] = f"{url}/{name}"
     if per_year:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)       # all-NaN where no year has the half-month
             mean = {b["id"]: np.nanmean([v[b["id"]] for v in per_year.values()], axis=0) for b in spec["bands"]}
-        path = f"data/wx/{l}-{area['id']}-mean.bin.gz"
-        total += wg.write_wxg(path, L, area["x0"], area["y0"], nx_, ny_, 0, bands(mean))
-        files["0"] = path
+        name = f"{l}-{area['id']}-mean.bin.gz"
+        total += wg.write_wxg(f"{out}/{name}", L, area["x0"], area["y0"], nx_, ny_, 0, bands(mean))
+        files["0"] = f"{url}/{name}"
         meta = {"id": l, **spec["meta"], "source": "MET Nordic", "attribution": CREDIT,
                 "bands": [{k: v for k, v in b.items() if k != "enc"} for b in spec["bands"]]}
         wg.update_index(area, meta, files)
@@ -394,6 +401,8 @@ def main():
     p.add_argument("--layers", default=",".join(LAYERS))
     p.add_argument("--workers", type=int, default=6, help="downloads in flight, at most 8")
     p.add_argument("--write-only", action="store_true")
+    p.add_argument("--out", default=OUT, help="folder the files are written to")
+    p.add_argument("--url", default=URL, help="where the map finds that folder; data/wx to try it locally")
     a = p.parse_args()
     layers = a.layers.split(",")
     for l in layers:
@@ -430,7 +439,7 @@ def main():
                   f"{k + 1}/{len(todo)}, about {el / (k + 1) * (len(todo) - k - 1) / 3600:.1f} h left",
                   flush=True)
 
-    total = sum(write_layer(l, area, cells) for l in layers)
+    total = sum(write_layer(l, area, cells, a.out.rstrip('/'), a.url.rstrip('/')) for l in layers)
     print(f"wrote {total / 1e6:.1f} MB")
 
 
