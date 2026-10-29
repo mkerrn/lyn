@@ -79,7 +79,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/temp-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/temp-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/temp-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/temp-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/temp-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/temp-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/temp-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/temp-no-mean.bin.gz"
     }
    }
@@ -109,7 +114,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/feels-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/feels-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/feels-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/feels-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/feels-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/feels-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/feels-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/feels-no-mean.bin.gz"
     }
    }
@@ -132,7 +142,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/wind-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/wind-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/wind-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/wind-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/wind-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/wind-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/wind-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/wind-no-mean.bin.gz"
     }
    }
@@ -162,7 +177,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/humid-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/humid-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/humid-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/humid-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/humid-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/humid-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/humid-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/humid-no-mean.bin.gz"
     }
    }
@@ -199,7 +219,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/rain-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/rain-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/rain-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/rain-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/rain-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/rain-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/rain-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/rain-no-mean.bin.gz"
     }
    }
@@ -229,7 +254,12 @@
    "files": {
     "no": {
      "2016": "https://mkerrn.github.io/weatherdata/wx/snow-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/snow-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/snow-no-2018.bin.gz",
      "2019": "https://mkerrn.github.io/weatherdata/wx/snow-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/snow-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/snow-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/snow-no-2022.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/snow-no-mean.bin.gz"
     }
    }
