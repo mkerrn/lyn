@@ -152,6 +152,11 @@ def dods(url, names, sl, size=None):
             r = s.get(f"{url}.dods?{q}", timeout=180)
             if r.status_code == 404:
                 return None
+            if r.status_code == 429:
+                # Throttled: wait as asked and try again, never give the hour up.
+                wait = r.headers.get("Retry-After", "")
+                time.sleep(float(wait) if wait.isdigit() else 60)
+                continue
             if 400 <= r.status_code < 500 and r.status_code != 429:
                 raise RuntimeError(f"{r.status_code} for {r.url}")
             r.raise_for_status()
@@ -437,7 +442,9 @@ def main():
     p.add_argument("--to", dest="end", default="2025-12-31")
     p.add_argument("--area", default="no")
     p.add_argument("--layers", default=",".join(LAYERS))
-    p.add_argument("--workers", type=int, default=6, help="downloads in flight, at most 8")
+    p.add_argument("--workers", type=int, default=1,
+                   help="downloads in flight. MET asks for one at a time while thredds.met.no is "
+                        "overloaded (status.met.no, October 2026); at most 4 otherwise")
     p.add_argument("--write-only", action="store_true")
     p.add_argument("--out", default=OUT, help="folder the files are written to")
     p.add_argument("--url", default=URL, help="where the map finds that folder; data/wx to try it locally")
@@ -470,7 +477,7 @@ def main():
         t0 = time.time()
         for k, (y, per, need) in enumerate(todo):
             t1 = time.time()
-            miss = run_period(y, per, need, cells, min(a.workers, 8))
+            miss = run_period(y, per, need, cells, min(a.workers, 4))
             el = time.time() - t0
             print(f"  {y} {per // 2 + 1:>2}/{'a' if per % 2 == 0 else 'b'} {','.join(need)}: "
                   f"{time.time() - t1:.0f} s{f', {miss} hours missing' if miss else ''}; "

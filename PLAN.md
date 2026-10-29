@@ -400,3 +400,8 @@ No new downloads.
   so it is not used. The docs say quality is lower before 2016-11-08 (an older
   model), which affects most of 2016. With the network down the fetcher now
   waits instead of skipping hours.
+- 2026-10-29, session 2: thredds.met.no is overloaded and throttled
+  (status.met.no), and MET asks for sequential downloads only. From
+  2022-09 on, half-months took up to 2 h with 6 in flight. The fetcher now
+  sends one request at a time by default, about 9 min a half-month, and
+  waits on a 429 rather than counting it as a failure.

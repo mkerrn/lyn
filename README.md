@@ -320,8 +320,10 @@ analysis counts at least half land; lakes are land). Days run in local solar
 time. The hours are turned into daily stats and the days into half-month sums,
 kept in `cache/wx/<area>/<layer>/` so a stopped run picks up where it was; the
 raw hours are never stored. The area is the one the thunderstorm days made,
-so run `make_thunder_days.py` first. Six downloads are in flight at once;
-thredds.met.no allows no more than 4–8.
+so run `make_thunder_days.py` first. It downloads one hour at a time, as MET
+asks while thredds.met.no is overloaded (status.met.no, October 2026); that
+takes about 9 minutes a half-month, a day and a half for all ten years.
+`--workers` allows up to 4 at once when the server is healthy again.
 
 - Temperature: day and night are the mean daily highest and lowest.
 - Feels like: wind chill below 10 °C, Steadman's apparent temperature above.
