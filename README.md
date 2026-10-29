@@ -322,7 +322,7 @@ kept in `cache/wx/<area>/<layer>/` so a stopped run picks up where it was; the
 raw hours are never stored. The area is the one the thunderstorm days made,
 so run `make_thunder_days.py` first. It downloads one hour at a time, as MET
 asks while thredds.met.no is overloaded (status.met.no, October 2026); that
-takes about 9 minutes a half-month, a day and a half for all ten years.
+takes about 15 minutes a half-month, two and a half days for all ten years.
 `--workers` allows up to 4 at once when the server is healthy again.
 
 - Temperature: day and night are the mean daily highest and lowest.
