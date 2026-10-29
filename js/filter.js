@@ -139,7 +139,8 @@ function setMonths(list){
   renderMonths(); refilter();
 }
 renderMonths();
-document.getElementById('mAll').onclick    = ()=> setMonths([0,1,2,3,4,5,6,7,8,9,10,11]);
+/* All, or none when all are on already. */
+document.getElementById('mAll').onclick    = ()=> setMonths(monthOn.every(Boolean) && !dayRange() ? [] : [0,1,2,3,4,5,6,7,8,9,10,11]);
 document.getElementById('mSummer').onclick = ()=> setMonths([5,6,7]);
 document.getElementById('mWinter').onclick = ()=> setMonths([10,11,0,1]);
 

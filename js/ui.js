@@ -69,6 +69,14 @@ document.getElementById('panelHead').onclick = ()=>{
   p.classList.toggle('closed');
   document.getElementById('toggleHint').textContent = p.classList.contains('closed') ? 'show' : 'hide';
 };
+/* The explanations under the controls, off unless asked for. */
+const EXPLAIN_KEY = 'lyn.explain', explainEl = document.getElementById('explain');
+try{ explainEl.checked = localStorage.getItem(EXPLAIN_KEY) === '1'; }catch(e){}
+document.getElementById('body').classList.toggle('explain', explainEl.checked);
+explainEl.onchange = ()=>{
+  document.getElementById('body').classList.toggle('explain', explainEl.checked);
+  try{ localStorage.setItem(EXPLAIN_KEY, explainEl.checked ? '1' : '0'); }catch(e){}
+};
 ['t-all','t-cg','t-cc'].forEach(id=> document.getElementById(id).onchange = refilter);
 document.getElementById('cap').onchange = refilter;
 ['iMin','iMax'].forEach(id=>{

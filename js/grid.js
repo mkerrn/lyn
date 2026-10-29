@@ -12,12 +12,13 @@ let wxGen = 0;        // bumped whenever wxCur is rebuilt
 
 /* ---------- ramps ---------- */
 /* Cool colours only, so nothing reads as one of the warm strike classes. The
-   temperature ramp runs from blue through white at 0 °C to purple. A fading
+   temperature ramp runs from blue through white to purple, stretched over
+   the range like any other, so white is the middle of it, not 0 °C. A fading
    ramp is mostly see-through at the low end, so the empty cells leave the
    base map readable, like the density grid. */
 const RAMPS = {
   seq:  {stops:['#bfd3e6','#9ebcda','#8c96c6','#8c6bb1','#88419d','#6e016b','#3f0040'], fade:true},
-  temp: {stops:['#053061','#2166ac','#67a9cf','#d1e5f0','#f7f7f7','#e7d4e8','#c2a5cf','#9970ab','#40004b'], mid:0}
+  temp: {stops:['#053061','#2166ac','#67a9cf','#d1e5f0','#f7f7f7','#e7d4e8','#c2a5cf','#9970ab','#40004b']}
 };
 function rampLut(stops, fade){
   const rgb = stops.map(rgbOf), lut = new Uint32Array(256);
@@ -36,14 +37,20 @@ function rampLut(stops, fade){
 for(const r of Object.values(RAMPS)) r.lut = rampLut(r.stops, r.fade);
 const rampOf = band=> RAMPS[band.ramp] || RAMPS.seq;
 
-/* 0–1 along the ramp. A diverging ramp puts its midpoint value in the middle
-   whatever the range, so white is always 0 °C. */
-function rampPos(r, v, lo, hi){
-  let t;
-  if(r.mid === undefined) t = hi > lo ? (v-lo)/(hi-lo) : 0.5;
-  else if(v < r.mid) t = lo < r.mid ? 0.5 - 0.5*(v-r.mid)/(lo-r.mid) : 0.5;
-  else t = hi > r.mid ? 0.5 + 0.5*(v-r.mid)/(hi-r.mid) : 0.5;
+/* 0–1 along the ramp. */
+function rampPos(v, lo, hi){
+  const t = hi > lo ? (v-lo)/(hi-lo) : 0.5;
   return t < 0 ? 0 : t > 1 ? 1 : t;
+}
+/* The ramp as a CSS gradient, sampled from the lookup table so the legend
+   fades at the low end just as the cells do. */
+function rampCss(r){
+  const s = [];
+  for(let i=0;i<=16;i++){
+    const c = r.lut[Math.round(i/16*255)];
+    s.push('rgba(' + (c & 255) + ',' + (c>>8 & 255) + ',' + (c>>16 & 255) + ',' + ((c>>>24)/255).toFixed(3) + ')');
+  }
+  return 'linear-gradient(to right,' + s.join(',') + ')';
 }
 
 /* ---------- WXG1 ---------- */
@@ -127,8 +134,10 @@ function wxPhrase(){
 }
 function wxFmt(v){
   if(!(v === v)) return '—';
-  return (Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1)) + ' ' + wxCur.band.unit;
+  return wxRound(v) + ' ' + wxCur.band.unit;
 }
+/* Whole numbers from 100 up, one decimal below, as text. */
+const wxRound = v=> Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1);
 
 /* ---------- loading ---------- */
 const wxFiles = new Map();    // url -> promise of the parsed file
@@ -303,7 +312,7 @@ const WxCanvas = StrikeLayer.extend({
         const row = y*g.nx, o = (y - v.c)*vw - v.a;
         for(let x=v.a;x<=v.b;x++){
           const val = v.A.vals[row+x];
-          if(val === val) u32[o+x] = lut[Math.round(rampPos(r, val, lo, hi)*255)];
+          if(val === val) u32[o+x] = lut[Math.round(rampPos(val, lo, hi)*255)];
         }
       }
       const off = this._cellCanvas = this._cellCanvas || document.createElement('canvas');
@@ -322,12 +331,12 @@ function wxLegend(lo, hi){
   const ok = hi >= lo, r = rampOf(wxCur.band);
   document.getElementById('wxLo').textContent = ok ? wxFmt(lo) : '—';
   document.getElementById('wxHi').textContent = ok ? wxFmt(hi) : '—';
-  document.getElementById('wxMid').textContent = r.mid !== undefined ? r.mid + ' ' + wxCur.band.unit : wxPhrase();
-  document.getElementById('wxRamp').style.background = 'linear-gradient(to right,' +
-    (r.fade ? r.stops[0] + '26,' : '') + r.stops.join(',') + ')';
+  document.getElementById('wxMid').textContent = ok ? wxFmt((lo + hi)/2) : '';
+  document.getElementById('wxPhrase').textContent = wxCur.band.unit + ', ' + wxPhrase();
+  document.getElementById('wxRamp').style.background = rampCss(r);
   if(!document.getElementById('wxFix').checked && ok){
-    document.getElementById('wxMin').placeholder = +lo.toFixed(1);
-    document.getElementById('wxMax').placeholder = +hi.toFixed(1);
+    document.getElementById('wxMin').placeholder = +wxRound(lo);
+    document.getElementById('wxMax').placeholder = +wxRound(hi);
   }
 }
 
@@ -486,8 +495,8 @@ document.getElementById('wxFix').onchange = e=>{
   mn.disabled = mx.disabled = !on;
   /* Start from the range on screen, so ticking the box freezes the look. */
   if(on && wxCanvas._hi >= wxCanvas._lo){
-    if(!mn.value) mn.value = +wxCanvas._lo.toFixed(1);
-    if(!mx.value) mx.value = +wxCanvas._hi.toFixed(1);
+    if(!mn.value) mn.value = +wxRound(wxCanvas._lo);
+    if(!mx.value) mx.value = +wxRound(wxCanvas._hi);
   }
   wxCanvas.redraw();
 };

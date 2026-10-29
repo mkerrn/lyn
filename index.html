@@ -34,7 +34,7 @@
         <button class="btn" id="yLast">Latest</button>
       </div>
       <p class="note" id="dataStatus" data-layers="lightning">…</p>
-      <p class="note">Click a year to toggle it, or press and drag across several to set them all the same way. Each year is downloaded the first time it is switched on and kept after that.</p>
+      <p class="note ex">Click a year to toggle it, or press and drag across several to set them all the same way. Each year is downloaded the first time it is switched on and kept after that.</p>
       <h2 style="margin:14px 0 8px">Months</h2>
       <div class="months" id="months"></div>
       <div class="actions" style="margin-top:0">
@@ -42,7 +42,7 @@
         <button class="btn" id="mSummer">Jun–Aug</button>
         <button class="btn" id="mWinter">Nov–Feb</button>
       </div>
-      <p class="note">Cuts across years: keep every year on and tick only June and July to stack ten summers on one map.</p>
+      <p class="note ex">Cuts across years: keep every year on and tick only June and July to stack ten summers on one map.</p>
       <h2 style="margin:14px 0 8px">Days of the year</h2>
       <div class="row">
         <input type="text" id="dayFrom" class="day" placeholder="15/8" inputmode="numeric">
@@ -50,18 +50,21 @@
         <input type="text" id="dayTo" class="day" placeholder="15/9" inputmode="numeric">
         <button class="btn" id="dayClear">Clear</button>
       </div>
-      <p class="note">Day/month, in every year selected. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
+      <p class="note ex">Day/month, in every year selected. Once both ends are filled in this replaces the months above. A span past New Year, 15/11 – 15/2, wraps round.</p>
     </section>
+
+    <hr>
 
     <section data-layers="grid" hidden>
       <h2 id="wxTitle">—</h2>
       <div class="row">
-        <label for="wxBand">Show</label>
+        <label for="wxBand">Value</label>
         <select id="wxBand"></select>
       </div>
       <div id="wxLegend">
         <div id="wxRamp"></div>
         <div id="wxScale"><span id="wxLo">—</span><span id="wxMid"></span><span id="wxHi">—</span></div>
+        <div id="wxPhrase"></div>
       </div>
       <div class="row">
         <input type="checkbox" id="wxFix">
@@ -72,8 +75,8 @@
       <div class="row" style="margin-top:12px"><label for="wxOpacity">Opacity</label></div>
       <input type="range" id="wxOpacity" min="0" max="100" value="75">
       <p class="note" id="wxStatus"></p>
-      <p class="note" id="wxNote"></p>
-      <p class="note">Averaged over the years ticked above. The months or days of the year pick which half-months take part: day counts and amounts are added up over them and shown per year, so with Jun–Aug ticked a count is days per summer, while temperatures and the like are averaged. Unfixed, the ramp stretches to the cells on screen; fix the scale to compare one view with another. Point at a cell for its value, tap it for its half-months.</p>
+      <p class="note ex" id="wxNote"></p>
+      <p class="note ex">Averaged over the years ticked above. The months or days of the year pick which half-months take part: day counts and amounts are added up over them and shown per year, so with Jun–Aug ticked a count is days per summer, while temperatures and the like are averaged. Unfixed, the ramp stretches to the cells on screen; fix the scale to compare one view with another. Point at a cell for its value, tap it for its half-months.</p>
       <p class="note" id="wxSource"></p>
     </section>
 
@@ -93,8 +96,8 @@
         </select>
       </div>
       <div id="regionChart"></div>
-      <p class="note" data-layers="grid" hidden>Press a shape, then drag on the map; Esc cancels. Averages every cell whose centre is inside the outline, weighted by its area, so the figure is what a random point in the region would see. Charted by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer.</p>
-      <p class="note" data-layers="lightning">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck and by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
+      <p class="note ex" data-layers="grid" hidden>Press a shape, then drag on the map; Esc cancels. Averages every cell whose centre is inside the outline, weighted by its area, so the figure is what a random point in the region would see. Charted by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer.</p>
+      <p class="note ex" data-layers="lightning">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck and by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
     </section>
 
     <section data-layers="lightning">
@@ -132,7 +135,7 @@
           <option value="0">everything</option>
         </select>
       </div>
-      <p class="note">Automatic draws points until there are more strikes on screen than this, then switches to the density grid. Points on their own draw an even sample down to it instead.</p>
+      <p class="note ex">Automatic draws points until there are more strikes on screen than this, then switches to the density grid. Points on their own draw an even sample down to it instead.</p>
       <p class="note" id="sampleNote"></p>
     </section>
 
@@ -158,7 +161,7 @@
         <div id="densRamp"></div>
         <div id="densScale"><span>0</span><span id="densHi">—</span></div>
       </div>
-      <p class="note">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view, or with the box ticked to the strongest anywhere, so a colour means the same density wherever you look. Counts every strike in the filter, even when the points are sampled. The grid is fixed to the map, so cells stay put as you pan; sizes are at 65°N, and a cell is about a quarter wider in the far south and a quarter narrower in Finnmark, which the per-km² figures allow for.</p>
+      <p class="note ex">Counts per unit area, which is the only way a spatial tendency shows up — raw points just show you that there is more low ground than high ground. Rescales to the strongest cell in view, or with the box ticked to the strongest anywhere, so a colour means the same density wherever you look. Counts every strike in the filter, even when the points are sampled. The grid is fixed to the map, so cells stay put as you pan; sizes are at 65°N, and a cell is about a quarter wider in the far south and a quarter narrower in Finnmark, which the per-km² figures allow for.</p>
     </section>
 
     <section data-layers="lightning">
@@ -168,7 +171,7 @@
         <label for="ellOn">Draw location error ellipse</label>
       </div>
       <input type="range" id="ellOpacity" min="2" max="60" value="25">
-      <p class="note">The reported 50 % confidence ellipse: semi-major and semi-minor axis in kilometres, rotated to the reported angle. Faint on purpose so a hundred of them stacked on one storm cell still show where the network was sure and where it was guessing.</p>
+      <p class="note ex">The reported 50 % confidence ellipse: semi-major and semi-minor axis in kilometres, rotated to the reported angle. Faint on purpose so a hundred of them stacked on one storm cell still show where the network was sure and where it was guessing.</p>
       <p class="note" id="ellNote"></p>
     </section>
 
@@ -204,9 +207,17 @@
         <input type="color" id="singleColor" value="#f2c14e">
       </div>
       <div class="legend" id="legend"></div>
-      <p class="note">Absolute value of the peak current in kA. Click a class to hide it, click its swatch to change its colour, or type a range above. Negative strokes are the ordinary kind; positive ones are rarer, often stronger, and carry more charge.</p>
-      <p class="note">Peak current is an estimate from the sensor network, easily 20 % out on any single stroke, and it is not a danger threshold. Every cloud-to-ground stroke in this file is thousands of times more current than a heart can take. What current changes is how far the hazard reaches from the attachment point, not whether there is one.</p>
+      <p class="note ex">Absolute value of the peak current in kA. Click a class to hide it, click its swatch to change its colour, or type a range above. Negative strokes are the ordinary kind; positive ones are rarer, often stronger, and carry more charge.</p>
+      <p class="note ex">Peak current is an estimate from the sensor network, easily 20 % out on any single stroke, and it is not a danger threshold. Every cloud-to-ground stroke in this file is thousands of times more current than a heart can take. What current changes is how far the hazard reaches from the attachment point, not whether there is one.</p>
     </section>
+
+    <section data-layers="lightning">
+      <h2>Open a file</h2>
+      <input type="file" id="dataFile" accept=".bin,.gz">
+      <p class="note ex">Open a LYN1 file from disk instead of the years above. Nothing is uploaded anywhere; it is read in your browser.</p>
+    </section>
+
+    <hr>
 
     <section>
       <h2>Altitude</h2>
@@ -226,12 +237,12 @@
       </div>
       <div class="row" style="margin-top:12px"><label for="altOpacity">Terrain opacity</label></div>
       <input type="range" id="altOpacity" min="0" max="100" value="60">
-      <p class="note">Unfixed, the ramp stretches to whatever is on screen: the lowest ground in view is dark blue, the highest is pale. Pan into a valley and it restretches, so colours mean different heights in different views. Fix the scale to compare one place against another.</p>
+      <p class="note ex">Unfixed, the ramp stretches to whatever is on screen: the lowest ground in view is dark blue, the highest is pale. Pan into a valley and it restretches, so colours mean different heights in different views. Fix the scale to compare one place against another.</p>
       <div class="actions" data-layers="lightning">
         <button class="btn" id="elevRun">Strikes by height, in this view</button>
       </div>
       <div id="elevChart" data-layers="lightning"></div>
-      <p class="note">Blues and greens throughout, so the warm strike colours stay readable on top. Sea is left clear. Heights come from open 10–30 m elevation tiles, computed in your browser.</p>
+      <p class="note ex">Blues and greens throughout, so the warm strike colours stay readable on top. Sea is left clear. Heights come from open 10–30 m elevation tiles, computed in your browser.</p>
     </section>
 
     <section>
@@ -240,14 +251,15 @@
       <div class="row"><input type="radio" name="base" id="b-otm"><label for="b-otm">OpenTopoMap</label></div>
     </section>
 
-    <section data-layers="lightning">
-      <h2>Open a file</h2>
-      <input type="file" id="dataFile" accept=".bin,.gz">
-      <p class="note">Open a LYN1 file from disk instead of the years above. Nothing is uploaded anywhere; it is read in your browser.</p>
+    <hr>
+
+    <section>
+      <div class="row"><input type="checkbox" id="explain"><label for="explain">Show explanations</label></div>
     </section>
 
-    <section style="border-top:1px solid var(--line);padding-top:12px">
-      <p class="note">Lightning and weather data © Meteorologisk institutt, distributed under NLOD / CC BY 4.0, detected by the Nordic lightning network. Positions are triangulated, not observed: a point can be a kilometre or more from where the flash actually hit, which is what the ellipse is telling you. Detection efficiency is lower for cloud-to-cloud than for cloud-to-ground, and lower everywhere far offshore.</p>
+    <section>
+      <p class="note">Lightning and weather data © Meteorologisk institutt, distributed under NLOD / CC BY 4.0, detected by the Nordic lightning network.</p>
+      <p class="note ex">Positions are triangulated, not observed: a point can be a kilometre or more from where the flash actually hit, which is what the ellipse is telling you. Detection efficiency is lower for cloud-to-cloud than for cloud-to-ground, and lower everywhere far offshore.</p>
       <p class="note">Base maps © Kartverket and © OpenTopoMap / OpenStreetMap contributors.</p>
     </section>
 

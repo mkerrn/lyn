@@ -30,6 +30,8 @@ section{margin-bottom:18px}
 section:last-child{margin-bottom:0}
 h2{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--snow)}
 p.note{margin:6px 0 0;font-size:11px;line-height:1.5;color:var(--muted)}
+#body:not(.explain) p.note.ex{display:none}
+hr{border:0;border-top:1px solid var(--line);margin:0 0 16px}
 a{color:var(--snow)}
 
 .row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12.5px}
@@ -80,7 +82,8 @@ input[type=file]::file-selector-button{
   background:linear-gradient(to right,#0b1c2c,#22506e,#2f8f8a,#7fc4a0,#e3f2e7);
 }
 #altScale{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);
-          font-variant-numeric:tabular-nums;margin-bottom:10px}
+          font-variant-numeric:tabular-nums}
+#wxPhrase{font-size:11px;color:var(--muted);text-align:center;margin:2px 0 10px}
 
 #densRamp{
   height:12px;border:1px solid var(--line);border-radius:2px;margin-bottom:4px;
@@ -144,5 +147,6 @@ input.day.bad{border-color:#ff9a8b}
 #layer{font-size:12.5px}
 #wxRamp{height:12px;border:1px solid var(--line);border-radius:2px;margin-bottom:4px}
 #wxScale{display:flex;justify-content:space-between;gap:6px;font-size:11px;color:var(--muted);
-         font-variant-numeric:tabular-nums;margin-bottom:10px}
+         font-variant-numeric:tabular-nums}
+#wxPhrase{font-size:11px;color:var(--muted);text-align:center;margin:2px 0 10px}
 .wxPop svg{width:250px;height:auto;display:block;margin:6px 0 2px}
