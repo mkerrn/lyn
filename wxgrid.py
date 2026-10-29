@@ -113,7 +113,9 @@ def write_wxg(path, L, x0, y0, nx, ny, year, bands):
     body = b"".join(np.ascontiguousarray(b["data"], dtype=np.dtype(DTYPES[b["dtype"]]).newbyteorder("<"))
                     .tobytes() for b in bands)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with gzip.open(path, "wb", compresslevel=9) as f:
+    # No time stamp in the gzip header, so rewriting unchanged data gives the
+    # same bytes and adds nothing to the data repo's history.
+    with open(path, "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", compresslevel=9, mtime=0) as f:
         f.write(head + body)
     return os.path.getsize(path)
 
