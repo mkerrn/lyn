@@ -22,8 +22,9 @@ The file list in README.md says what is in each. Shared state lives in globals:
 `map`, `CLASSES`, `classOn`, `layerId` / `isLightning()` (`map.js`), `strikes`
 (`strikes.js`), and for the grid layers `wx` (the index), `wxLayer`, `wxCur`
 (what is drawn: band, years, half-month weights, per-area values) and
-`wxCanvas` (`grid.js`). Lightning-only and grid-only panel parts carry
-`data-layers`. Use grep for an element id or function name rather than reading
+`wxCanvas` (`grid.js`), and the height band `hband` / `inHband()` with the
+heights `elevGrids` (`altitude.js`). Panel parts for some layers only carry
+`data-layers`: layer ids, `grid` meaning any grid layer. Use grep for an element id or function name rather than reading
 whole files.
 
 ## Ongoing work

@@ -18,7 +18,9 @@ The years, months and days of the year apply to every layer. On a grid layer
 the years are averaged, and the months or day range pick which half-months
 take part: counts and amounts are added up over them and shown per year (with
 Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
-the like are averaged. The lightning-only sections of the panel hide on a grid
+the like are averaged. So does the height band under *Height above sea
+level*: strikes and grid cells outside it are left out, region charts
+included. The lightning-only sections of the panel hide on a grid
 layer. Temperature, feels like, wind, humidity, rain and snow are built by
 `fetch_climate.py` (below). Their files are too big for this repository and
 live in [mkerrn/weatherdata](https://github.com/mkerrn/weatherdata), served by GitHub
@@ -36,8 +38,10 @@ in `PLAN.md`.
     current, legend → `groups`, `groupTiles`.
   - `strikes.js` — the canvas layer: points, ellipses, the density pyramid,
     sampling, the automatic switch between points and grid.
-  - `altitude.js` — elevation tiles, terrain shading, strikes-by-height chart.
-  - `region.js` — drawing a region on the map, and its hour-of-day chart.
+  - `altitude.js` — elevation tiles, terrain shading, the height band filter
+    and its shading, strikes-by-height chart.
+  - `region.js` — drawing a region on the map, and its charts of strikes by
+    hour, part of the year and year.
   - `grid.js` — the grid layers: `WXG1` loading, combining years and
     half-months, the canvas layer, its readout, popup and region chart, and
     the layer switch.
@@ -46,6 +50,8 @@ in `PLAN.md`.
   and packs it into one `.bin.gz`.
 - `split_years.py` — cuts that file into one per year under `data/`, with an
   `index.json` the map reads to build its year list.
+- `make_elevation.py` — ground height per ~1 km cell for the height filter,
+  from the elevation tiles, written to `data/wx/`.
 - `make_thunder_days.py` — the thunderstorm-days layer from the per-year
   lightning files, written to `data/wx/`.
 - `fetch_climate.py` — the temperature, feels-like, wind, humidity, rain and
@@ -157,6 +163,15 @@ compare places. Sea is left transparent. The ramp is blue through green so the
 warm strike colours stay legible on top, and there is a brightness slider for the
 strikes themselves when the contrast still is not right.
 
+**Height above sea level.** Two knobs set a band of ground height, and every
+layer keeps to it: strikes outside are dropped, grid cells outside are left
+blank, and the region charts count only what is left. Heights are the mean
+ground of cells about 1 km across (for a grid layer, its 2 km cell), from
+`data/wx/elev-no.bin.gz`, which is only downloaded once the band is narrowed.
+The sea counts as 0 m, and the right knob at the end means no upper limit.
+*Show on the map* darkens the ground outside the band, from the altitude
+layer's finer tiles, so you can see what the band covers.
+
 One thing the current filter cannot do is tell you which strikes were dangerous.
 See the note in the panel: peak current is an estimate, and every cloud-to-ground
 stroke is far past any human injury threshold. For "would this have hurt someone
@@ -197,8 +212,8 @@ noise. Remember that MET's position error is a few hundred metres to a couple of
 kilometres, so this can show a regional trend but not a summit-versus-valley one.
 
 **Time of day in a region.** Draw a rectangle or a freehand outline on the
-map and the panel charts the strikes inside it by hour of day, using every
-strike that passes the filters. Hours can be Norwegian clock time (with summer
+map and the panel charts the strikes inside it by hour of day, by part of the
+year and by year, using every strike that passes the filters. Hours can be Norwegian clock time (with summer
 time), local solar time (shifted by each strike's longitude), or UTC. Combine it
 with the months or a day range to compare, say, late-summer inland convection
 against autumn showers on the coast.
@@ -257,6 +272,21 @@ with the region tool. The files live in `data/wx/`:
 - `<layer>-<area>-<year>.bin.gz` — one per year.
 - `<layer>-<area>-mean.bin.gz` — the mean over all the years, which is all the
   map downloads while every year is on.
+
+A region on a grid layer gives its area-weighted value, by part of the year
+and by year. The by-year chart reads each year's file, cut down to the
+region and let go, so the years never sit in memory together. Thunderstorm
+days fetch theirs straight away; the climate files are 5–10 MB each and wait
+for the button. Thunderstorm days can also chart the strikes in the region by
+hour of day, after downloading the lightning. The climate layers have no hours
+yet: they are stored by half-month only (see `PLAN.md`, session 3).
+
+The heights for the height filter, from the terrarium tiles at zoom 8, cached
+under `cache/dem/`; about a minute:
+
+```
+python3 make_elevation.py
+```
 
 Thunderstorm days, rebuilt from the lightning in `data/`:
 

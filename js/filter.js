@@ -1,4 +1,4 @@
-/* Filters (months, type, current, legend) into per-class index lists. */
+/* Filters (months, height, type, current, legend) into per-class index lists. */
 
 /* ---------- filtering ---------- */
 let groups = [];   // per current class: Int32Array of every index passing the filter
@@ -24,6 +24,8 @@ function refilter(){
   const iMax = isNaN(iMaxV) ? Infinity : iMaxV;
   const pol  = document.getElementById('pol').value;
   const dr = dayRange();
+  if(hband && !D.hgt) D.hgt = strikeHeights(D);
+  const hgt = hband ? D.hgt : null;
 
   const counts = new Int32Array(NCLASS);
   const cls = new Uint8Array(i1-i0);
@@ -32,6 +34,7 @@ function refilter(){
       const k = D.md[i];
       if(dr.lo <= dr.hi ? (k < dr.lo || k > dr.hi) : (k < dr.lo && k > dr.hi)){ cls[i-i0]=255; continue; }
     } else if(!monthOn[D.mon[i]]){ cls[i-i0]=255; continue; }
+    if(hgt && !inHband(hgt[i])){ cls[i-i0]=255; continue; }
     const cloud = D.flag[i] & 1;
     if(mode==='cg' && cloud) { cls[i-i0]=255; continue; }
     if(mode==='cc' && !cloud){ cls[i-i0]=255; continue; }

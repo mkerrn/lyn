@@ -308,6 +308,14 @@ No new downloads.
       options, and notes on what the expectation means. Check that Tromsø
       shows polar night and that a deep valley like Rjukan has far fewer days
       seen than the plateau above it in winter.
+- [ ] Hour of day for the climate layers, in the same rerun, as the region
+      tool charts it for lightning. The half-month files hold no hours, so
+      store a mean day per month: 24 local solar hours × 12 months, the mean
+      over all years, at level 11 (about 8 km), in one file per layer. Hourly
+      temperature, feels like, wind and humidity; for rain and snow the
+      chance of at least 0.1 mm in the hour; sun minutes. About 30 MB in all,
+      before gzip. In the region tool, chart it under the by-part-of-year
+      chart, solar time only, and show *Hours in* for those layers.
 
 ### Session 4 — the Nordics, then Europe
 
@@ -351,6 +359,15 @@ No new downloads.
 ## Changes to the plan
 
 (Add a dated line here whenever a session changes the plan, and why.)
+
+- 2026-10-29, between sessions 2 and 3, asked for by the user: the region
+  tool also charts by year (strikes per year; for a grid layer the value in
+  each selected year, from the per-year files), thunderstorm days chart the
+  strikes by hour of day, and a height band filter applies to every layer,
+  from a ~1 km height grid (`make_elevation.py`, `data/wx/elev-no.bin.gz`,
+  listed under `elev` at the top of the index so the climate pipeline leaves
+  it alone). Hour of day for the climate layers needs the hours again, so it
+  joins the session 3 rerun.
 
 - 2026-10-27, session 1: layers in `index.json` also carry `attribution` and
   `note`, shown in the attribution control and the panel. The grid helpers

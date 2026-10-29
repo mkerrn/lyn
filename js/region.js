@@ -238,6 +238,51 @@ function barChart(counts, n, tick, name, title, unit, opt){
   return svg + '</svg>';
 }
 
+/* The UTC year of unix seconds: the guess from an average year length is
+   checked against the real New Year on either side. */
+const newYear = y=> Date.UTC(y, 0, 1)/1000;
+function yearOfT(t){
+  const y = 1970 + Math.floor(t/31556952);
+  return t < newYear(y) ? y-1 : t >= newYear(y+1) ? y+1 : y;
+}
+
+/* Hour of day, part of the year and year of every strike that each(cb)
+   hands over and that falls inside the region. */
+function strikeTally(each, tz){
+  const hours = new Float64Array(24), s = seasonBins();
+  const season = new Float64Array(s.months.length*s.parts), years = new Map();
+  let n = 0;
+  each(i=>{
+    const x = D.wx[i], y = D.wy[i];
+    if(x < region.x0 || x > region.x1 || y < region.y0 || y > region.y1 || !inRegion(x, y)) return;
+    hours[hourOf(i, tz)]++; n++;
+    const b = seasonBin(s, D.md[i]);
+    if(b >= 0) season[b]++;
+    const yr = yearOfT(D.t0 + D.t[i]);
+    years.set(yr, (years.get(yr) || 0) + 1);
+  });
+  return {hours, season, s, years, n};
+}
+const hh = h=> String(h).padStart(2,'0');
+function hourChart(T, tz, what, more){
+  let best = 0, peak = 0;
+  for(let h=0;h<24;h++) if(T.hours[h] > best){ best = T.hours[h]; peak = h; }
+  return barChart(T.hours, T.n, h=> h % 3 === 0 ? hh(h) : null,
+                  h=> hh(h)+':00–'+hh(h+1)+':00', 'hour of day', 'hour') +
+    '<p class="cap">' + T.n.toLocaleString('en') + ' strikes ' + what + ', by hour of ' +
+    HOUR_LABEL[tz] + '. Busiest hour ' + hh(peak) + ':00–' + hh(peak+1) + ':00.' + (more || '') + '</p>';
+}
+/* The selected years, or for a file opened by hand the years it holds. */
+function yearChart(T){
+  const ys = manifest && mergedKey !== null ? wantedYears().map(Number) : [...T.years.keys()].sort();
+  if(ys.length < 2) return '';
+  const counts = Float64Array.from(ys, y=> T.years.get(y) || 0);
+  return barChart(counts, T.n, j=> ys.length <= 12 || j % 2 === 0 ? ys[j] : null,
+                  j=> String(ys[j]), 'by year', 'year') +
+    '<p class="cap">The same strikes by year (UTC), in the part of the year selected.</p>';
+}
+const regionArea = ()=>{ const km2 = regionKm2(); return km2 >= 100 ? Math.round(km2).toLocaleString('en') : km2.toFixed(1); };
+
 function regionHours(){
   const host = document.getElementById('regionChart');
   if(!region.xs){
@@ -247,43 +292,52 @@ function regionHours(){
   if(!isLightning()){ wxRegion(); return; }
   if(!D){ host.innerHTML = '<p class="cap">No strikes loaded.</p>'; return; }
   const tz = document.getElementById('hourTz').value;
-  const hours = new Float64Array(24);
-  const s = seasonBins();
-  const season = new Float64Array(s.months.length*s.parts);
-  let n = 0;
-  for(let k=0;k<NCLASS;k++){
-    const g = groups[k]; if(!g) continue;
-    for(let j=0;j<g.length;j++){
-      const i = g[j];
-      if(!inRegion(D.wx[i], D.wy[i])) continue;
-      hours[hourOf(i, tz)]++; n++;
-      const b = seasonBin(s, D.md[i]);
-      if(b >= 0) season[b]++;
+  const T = strikeTally(cb=>{
+    for(let k=0;k<NCLASS;k++){
+      const g = groups[k]; if(!g) continue;
+      for(let j=0;j<g.length;j++) cb(g[j]);
     }
-  }
-  const km2 = regionKm2();
-  const area = km2 >= 100 ? Math.round(km2).toLocaleString('en') : km2.toFixed(1);
-  if(!n){
+  }, tz);
+  const area = regionArea();
+  if(!T.n){
     host.innerHTML = '<p class="cap">No strikes in the region (' + area + ' km²) with the current filters.</p>';
     return;
   }
-
-  let best = 0, peak = 0;
-  for(let h=0;h<24;h++) if(hours[h] > best){ best = hours[h]; peak = h; }
-  const hh = h=> String(h).padStart(2,'0');
-  const hourSvg = barChart(hours, n, h=> h % 3 === 0 ? hh(h) : null,
-                           h=> hh(h)+':00–'+hh(h+1)+':00', 'hour of day', 'hour');
-  const unit = s.parts === 1 ? 'month' : s.parts === 2 ? 'half month' : 'quarter month';
-  const seasonSvg = barChart(season, n,
+  const s = T.s, unit = s.parts === 1 ? 'month' : s.parts === 2 ? 'half month' : 'quarter month';
+  const seasonSvg = barChart(T.season, T.n,
                              b=> b % s.parts === 0 ? MONTHS[s.months[b/s.parts]] : null,
                              b=> seasonLabel(s, b), 'time of year', unit);
-
-  host.innerHTML = hourSvg +
-    '<p class="cap">' + n.toLocaleString('en') + ' strikes in ' + area + ' km², by hour of ' +
-    HOUR_LABEL[tz] + '. Busiest hour ' + hh(peak) + ':00–' + hh(peak+1) +
-    ':00. Uses every strike in the filter, not the drawn sample.</p>' +
+  host.innerHTML = hourChart(T, tz, 'in ' + area + ' km²', ' Uses every strike in the filter, not the drawn sample.') +
     seasonSvg +
-    '<p class="cap">The same strikes by ' + unit + ' (UTC date), across every year selected.</p>';
+    '<p class="cap">The same strikes by ' + unit + ' (UTC date), across every year selected.</p>' +
+    yearChart(T);
+}
+
+/* On the thunderstorm-days layer: the strikes behind it by hour of day, both
+   kinds, in the months or days and the height band selected. The strikes
+   are only downloaded when asked for. */
+function thunderHours(){
+  const head = '<p class="cap" style="margin-top:10px">';
+  const ready = D && manifest && mergedKey === wantedYears().join() && wantedYears().length;
+  if(!ready){
+    if(strikesForGrid) return head + 'Loading the strikes for the hour of day…</p>';
+    const mb = manifest ? manifest.files.filter(f=> yearOn.has(String(f.year)))
+                            .reduce((t,f)=> t + f.bytes, 0)/1e6 : 0;
+    return head + '<button class="btn" id="thunderGo">Hour of day, from the strikes</button> ' +
+      (mb ? 'Downloads ' + Math.round(mb) + ' MB of lightning.' : '') + '</p>';
+  }
+  const tz = document.getElementById('hourTz').value, dr = dayRange();
+  if(hband && !D.hgt) D.hgt = strikeHeights(D);
+  const T = strikeTally(cb=>{
+    for(let i=0;i<D.n;i++){
+      const k = D.md[i];
+      if(dr ? !inDays(dr, k) : !monthOn[D.mon[i]]) continue;
+      if(hband && !inHband(D.hgt[i])) continue;
+      cb(i);
+    }
+  }, tz);
+  if(!T.n) return head + 'No strikes inside the region with these filters.</p>';
+  return '<div style="margin-top:10px">' + hourChart(T, tz, 'inside the region') + '</div>';
 }
 
 document.getElementById('rgRect').onclick = ()=> setDrawMode(region.mode === 'rect' ? null : 'rect');

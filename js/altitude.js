@@ -135,9 +135,15 @@ const AltLayer = L.GridLayer.extend({
     const wc = work.getContext('2d');
     const img = wc.createImageData(256,256);
     const out = img.data, el = d.el;
+    /* Showing the height band: ground inside it left clear, the rest dark. */
+    const hb = this._band ? sliderBand() || {lo:0, hi:Infinity} : null;
     for(let i=0;i<256*256;i++){
       const v = el[i];
       if(v < -0.5) continue;                    // sea stays clear
+      if(hb){
+        if(v < hb.lo || v > hb.hi){ out[i*4] = ALT_OUT[0]; out[i*4+1] = ALT_OUT[1]; out[i*4+2] = ALT_OUT[2]; out[i*4+3] = 255; }
+        continue;
+      }
       let t = (v - lo)/span;
       t = t < 0 ? 0 : t > 1 ? 1 : t;
       const k = (t*255)|0;
@@ -155,9 +161,16 @@ const AltLayer = L.GridLayer.extend({
 });
 const alt = new AltLayer({maxZoom:18, opacity:0.6, tileSize:256});
 
-document.getElementById('altOn').onchange = e=>{
-  if(e.target.checked) alt.addTo(map); else map.removeLayer(alt);
-};
+/* The layer is on for the height shading, the height band, or both; the
+   band wins while it is shown. */
+function altShown(){
+  const on = document.getElementById('altOn').checked || hShow.checked;
+  alt._band = hShow.checked;
+  if(on && !map.hasLayer(alt)) alt.addTo(map);
+  else if(!on && map.hasLayer(alt)) map.removeLayer(alt);
+  else if(on) alt.rescale();
+}
+document.getElementById('altOn').onchange = altShown;
 document.getElementById('altOpacity').oninput = e=> alt.setOpacity(e.target.value/100);
 document.getElementById('altFix').onchange = e=>{
   const on = e.target.checked;
@@ -177,6 +190,112 @@ document.getElementById('altFix').onchange = e=>{
   const el = document.getElementById(id);
   el.oninput = ()=>{ clearTimeout(el._t); el._t = setTimeout(()=> alt.rescale(), 300); };
 });
+
+/* ---------- the height filter ---------- */
+/* Two knobs set a band of ground height that every layer keeps to: strikes
+   outside it are dropped and grid cells outside it left blank, so the region
+   charts follow. Heights are the mean ground of cells of about 1 km, from
+   data/wx/elev-*.bin.gz (make_elevation.py), loaded the first time the band
+   is narrowed. Sea counts as 0 m, and the top knob at its end means no top. */
+const HGT_MAX = 2500;
+const ALT_OUT = [11,28,44];
+const hLo = document.getElementById('hLo'), hHi = document.getElementById('hHi');
+const hShow = document.getElementById('hShow'), hNote = document.getElementById('hNote');
+let hband = null;      // the band in force, {lo, hi} in metres, or null for any height
+let elevGrids = null;  // the elevation files: a promise, then [{L, x0, y0, nx, ny, h, nodata}]
+
+/* What the knobs say, whether or not the heights have arrived yet. */
+function sliderBand(){
+  const lo = +hLo.value, hi = +hHi.value;
+  if(lo <= 0 && hi >= HGT_MAX) return null;
+  return {lo, hi: hi >= HGT_MAX ? Infinity : hi};
+}
+function hbandLabel(b){
+  if(!b) return 'any height';
+  if(b.hi === Infinity) return 'above ' + b.lo + ' m';
+  return (b.lo > 0 ? b.lo + '–' : 'below ') + b.hi + ' m';
+}
+
+function loadHeights(){
+  if(!elevGrids){
+    const urls = Object.values(wx && wx.elev || {});
+    if(!urls.length) return Promise.reject(new Error('no heights listed in ' + WX_INDEX_URL));
+    elevGrids = Promise.all(urls.map(wxGet)).then(fs=> elevGrids = fs.map(f=>{
+      const b = f.bands.elev;
+      return {L:f.L, x0:f.x0, y0:f.y0, nx:f.nx, ny:f.ny, h:b.data, nodata:b.nodata};
+    }));
+    elevGrids.catch(()=> elevGrids = null);
+  }
+  return Promise.resolve(elevGrids);
+}
+/* Metres at a world point: null on sea, NaN off every grid. */
+function elevAt(x, y){
+  for(const g of elevGrids){
+    const N = Math.pow(2, g.L), cx = Math.floor(x*N) - g.x0, cy = Math.floor(y*N) - g.y0;
+    if(cx < 0 || cx >= g.nx || cy < 0 || cy >= g.ny) continue;
+    const v = g.h[cy*g.nx + cx];
+    return v === g.nodata ? null : v;
+  }
+  return NaN;
+}
+const inHband = h=> h >= hband.lo && h <= hband.hi;
+
+/* One height per strike, looked up once per merged dataset. */
+function strikeHeights(D){
+  const out = new Float32Array(D.n);
+  for(let i=0;i<D.n;i++){ const v = elevAt(D.wx[i], D.wy[i]); out[i] = v === null ? 0 : v; }
+  return out;
+}
+/* One height per cell of a grid layer's area: the mean of the land in it,
+   0 for a cell all sea. Kept per area, as the area never changes. */
+const cellHeightCache = new Map();
+function cellHeights(g){
+  const key = [g.L, g.x0, g.y0, g.nx, g.ny].join();
+  let out = cellHeightCache.get(key);
+  if(out) return out;
+  const f = Math.max(1, Math.pow(2, elevGrids[0].L - g.L)), N = Math.pow(2, g.L);
+  out = new Float32Array(g.nx*g.ny);
+  for(let y=0;y<g.ny;y++) for(let x=0;x<g.nx;x++){
+    let s = 0, n = 0, seen = false;
+    for(let j=0;j<f;j++) for(let k=0;k<f;k++){
+      const v = elevAt((g.x0 + x + (k+0.5)/f)/N, (g.y0 + y + (j+0.5)/f)/N);
+      if(v === null){ seen = true; continue; }
+      if(v === v){ s += v; n++; seen = true; }
+    }
+    out[y*g.nx + x] = n ? s/n : seen ? 0 : NaN;
+  }
+  cellHeightCache.set(key, out);
+  return out;
+}
+
+/* The knobs can't cross. The fill, label and shading follow at once; the
+   filter waits until the knob has been still for a moment. */
+function hgtInput(e){
+  if(+hLo.value > +hHi.value){ if(e && e.target === hLo) hLo.value = hHi.value; else hHi.value = hLo.value; }
+  const a = +hLo.value/HGT_MAX*100, b = +hHi.value/HGT_MAX*100;
+  const fill = document.getElementById('hFill');
+  fill.style.left = a + '%'; fill.style.width = (b - a) + '%';
+  document.getElementById('hLabel').textContent = hbandLabel(sliderBand());
+  if(alt._band && map.hasLayer(alt)) alt.rescale();
+  clearTimeout(hgtInput._t); hgtInput._t = setTimeout(applyHband, 250);
+}
+let hbandSeq = 0;
+async function applyHband(){
+  const b = sliderBand(), seq = ++hbandSeq;
+  if(b && !Array.isArray(elevGrids)){
+    hNote.textContent = 'Loading the heights…';
+    try{ await loadHeights(); }
+    catch(err){ hNote.textContent = 'Could not load the heights: ' + err.message; return; }
+    hNote.textContent = '';
+  }
+  if(seq !== hbandSeq) return;
+  const same = !b === !hband && (!b || (b.lo === hband.lo && b.hi === hband.hi));
+  hband = b;
+  if(!same) refilter();
+}
+hLo.oninput = hHi.oninput = hgtInput;
+hShow.onchange = altShown;
+hgtInput();
 
 /* ---------- strikes per unit area, by height ---------- */
 /* The question "does it strike summits more" cannot be answered by looking at

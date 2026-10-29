@@ -175,7 +175,7 @@ function useChunks(chunks){
   }
   D = merge(chunks);
   refilter();
-  if(firstFit){
+  if(firstFit && isLightning()){
     firstFit = false;
     let mnLa=90, mxLa=-90, mnLo=180, mxLo=-180;
     const step = Math.max(1, Math.floor(D.n/20000));
@@ -197,8 +197,10 @@ const wantedYears = ()=> manifest.files.map(f=> String(f.year)).filter(k=> yearO
 /* The years merged into D, or null for a file opened by hand, so coming back
    to lightning from a grid layer only merges again if they have changed. */
 let mergedKey = null;
+/* The thunderstorm-days layer charts the strikes by hour too, once asked. */
+let strikesForGrid = false;
 async function syncYears(){
-  if(!isLightning()){ wxRefresh(); return; }
+  if(!isLightning()){ wxRefresh(); if(!(strikesForGrid && layerId === 'thunder')) return; }
   const seq = ++syncSeq;
   const want = wantedYears();
   const missing = want.filter(k=> !loaded.has(k));

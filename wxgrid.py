@@ -104,10 +104,10 @@ def day_parts(days):
 
 # ---------- WXG1 ----------
 
-def write_wxg(path, L, x0, y0, nx, ny, year, bands):
+def write_wxg(path, L, x0, y0, nx, ny, year, bands, nperiods=NPERIODS):
     """bands: list of dicts with id, dtype (1/2/3), scale, offset, nodata and
-    data, an array of raw values shaped (24, ny, nx)."""
-    head = b"WXG1" + struct.pack("<HBBBhIIHH", 1, L, len(bands), NPERIODS, year, x0, y0, nx, ny)
+    data, an array of raw values shaped (nperiods, ny, nx)."""
+    head = b"WXG1" + struct.pack("<HBBBhIIHH", 1, L, len(bands), nperiods, year, x0, y0, nx, ny)
     for b in bands:
         head += struct.pack("<16sBffH", b["id"].encode()[:16], b["dtype"], b["scale"], b["offset"], b["nodata"])
     body = b"".join(np.ascontiguousarray(b["data"], dtype=np.dtype(DTYPES[b["dtype"]]).newbyteorder("<"))

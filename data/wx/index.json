@@ -264,5 +264,8 @@
     }
    }
   }
- ]
+ ],
+ "elev": {
+  "no": "data/wx/elev-no.bin.gz"
+ }
 }

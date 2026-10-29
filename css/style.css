@@ -150,3 +150,24 @@ input.day.bad{border-color:#ff9a8b}
          font-variant-numeric:tabular-nums}
 #wxPhrase{font-size:11px;color:var(--muted);text-align:center;margin:2px 0 10px}
 .wxPop svg{width:250px;height:auto;display:block;margin:6px 0 2px}
+
+/* Two range inputs stacked on one track; only their knobs take the pointer. */
+.dual{position:relative;height:22px;margin-bottom:6px}
+.dual .track,.dual .fill{position:absolute;top:9px;height:4px;border-radius:2px}
+.dual .track{left:0;right:0;background:var(--panel-2);border:1px solid var(--line)}
+.dual .fill{background:var(--snow)}
+.dual input[type=range]{
+  position:absolute;left:0;top:0;width:100%;height:22px;margin:0;
+  -webkit-appearance:none;appearance:none;background:none;pointer-events:none;
+}
+.dual input[type=range]::-webkit-slider-runnable-track{background:none;height:22px}
+.dual input[type=range]::-moz-range-track{background:none}
+.dual input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;pointer-events:auto;width:14px;height:14px;margin-top:4px;
+  border-radius:50%;background:var(--snow);border:2px solid var(--panel);cursor:pointer;
+}
+.dual input[type=range]::-moz-range-thumb{
+  pointer-events:auto;width:12px;height:12px;border-radius:50%;
+  background:var(--snow);border:2px solid var(--panel);cursor:pointer;
+}
+.hval{flex:1;font-variant-numeric:tabular-nums}

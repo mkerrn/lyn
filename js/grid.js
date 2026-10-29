@@ -142,13 +142,14 @@ const wxRound = v=> Math.abs(v) >= 100 ? v.toFixed(0) : v.toFixed(1);
 /* ---------- loading ---------- */
 const wxFiles = new Map();    // url -> promise of the parsed file
 const wxParsed = new Map();   // url -> parsed file, once it has arrived
+/* One file, fetched and parsed but not kept. */
+const wxGet = url=> fetch(url)
+  .then(r=>{ if(!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.arrayBuffer(); })
+  .then(maybeGunzip).then(parseWxg);
 function wxFetch(url){
   let p = wxFiles.get(url);
   if(!p){
-    p = fetch(url)
-      .then(r=>{ if(!r.ok) throw new Error(r.status + ' ' + r.statusText); return r.arrayBuffer(); })
-      .then(maybeGunzip).then(parseWxg)
-      .then(f=>{ wxParsed.set(url, f); return f; });
+    p = wxGet(url).then(f=>{ wxParsed.set(url, f); return f; });
     p.catch(()=> wxFiles.delete(url));
     wxFiles.set(url, p);
   }
@@ -190,14 +191,16 @@ async function wxRefresh(){
    half-months weighted by their days; sum bands add the half-months up, so a
    day count is days a year in the selected part of it. Both are averaged
    over the years, and a half-month with no data in some year is left out of
-   that year rather than counted as zero. */
+   that year rather than counted as zero. Cells outside the height band are
+   left without a value, which is what keeps the map, readout, popup and
+   region to it. */
 function wxBand(){
   const id = document.getElementById('wxBand').value;
   return wxLayer.bands.find(b=> b.id === id) || wxLayer.bands[0];
 }
 function wxCompute(years){
   const band = wxBand(), wt = wxWeights();
-  const key = [wxLayer.id, band.id, years.join(), wt.join()].join('|');
+  const key = [wxLayer.id, band.id, years.join(), wt.join(), hbandLabel(hband)].join('|');
   if(wxCur && wxCur.key === key) return;
   const mean = band.agg === 'mean';
   const ww = Array.from(wt, (w,p)=> mean ? w*PERIOD_DAYS[p] : w);
@@ -216,7 +219,11 @@ function wxCompute(years){
     }
     const vals = new Float32Array(n), k = mean ? 1 : W;
     for(let i=0;i<n;i++) vals[i] = den[i] ? num[i]/den[i]*k : NaN;
-    areas.push({area:g, files, vals});
+    if(hband){
+      const hs = cellHeights(g);
+      for(let i=0;i<n;i++) if(!inHband(hs[i])) vals[i] = NaN;
+    }
+    areas.push({id:a.id, area:g, files, vals});
   }
   wxCur = {key, band, years, wt, mean, areas};
   wxGen++;
@@ -233,7 +240,7 @@ function addPeriod(num, den, raw, o, n, sc, of, nd, w){
    sets = [{A, cells, w}] with an area weight per cell. */
 function wxPeriods(sets){
   const id = wxCur.band.id, num = new Float64Array(24), den = new Float64Array(24);
-  for(const s of sets) for(const f of s.A.files){
+  for(const s of sets) for(const f of s.files || s.A.files){
     const b = f.bands[id]; if(!b) continue;
     const n = f.nx*f.ny, raw = b.data;
     for(let p=0;p<24;p++){
@@ -400,10 +407,11 @@ function wxRegion(){
         cells.push(i); w.push(cw); km2 += cw;
       }
     }
-    if(cells.length){ sets.push({A, cells, w}); ncell += cells.length; }
+    if(cells.length){ sets.push({A, cells, w, box:{a, b, c, d}}); ncell += cells.length; }
   }
   if(!ncell){
-    host.innerHTML = '<p class="cap">No cells with data inside the region. Draw a larger one, or one over land.</p>';
+    host.innerHTML = '<p class="cap">No cells with data inside the region' + (hband ? ' and the height band' : '') +
+      '. Draw a larger one, or one over land.</p>' + (wxLayer.id === 'thunder' ? thunderHours() : '');
     return;
   }
   const per = wxPeriods(sets);
@@ -424,10 +432,112 @@ function wxRegion(){
     b=> seasonLabel(s, b), 'time of year', unit, {fmt:wxFmt, color:WX_BAR});
   const area = km2 >= 100 ? Math.round(km2).toLocaleString('en') : km2.toFixed(1);
   host.innerHTML = '<p class="cap"><b>' + wxFmt(wxTotal(per)) + '</b> ' + wxPhrase() +
-    ', averaged over ' + ncell.toLocaleString('en') + ' cells, ' + area + ' km².</p>' + svg +
+    ', averaged over ' + ncell.toLocaleString('en') + ' cells, ' + area + ' km²' +
+    (hband ? ' ' + hbandLabel(hband) : '') + '.</p>' + svg +
     '<p class="cap">By ' + unit + (wxCur.mean ? ', the mean' : ', per year') +
-    ' over the years selected.</p>';
+    ' over the years selected.</p>' + wxRegionYears(sets) +
+    (wxLayer.id === 'thunder' ? thunderHours() : '');
 }
+
+/* ---------- the region, year by year ---------- */
+/* The region's value in each selected year, from the per-year files. A year
+   file the map is not drawing is fetched, cut down to the region's box and
+   let go, so ten years of a layer never sit in memory at once. Files on
+   this site (thunderstorm days, a few hundred kB) are fetched straight away;
+   the climate files are 5–10 MB each, so those wait for the button. */
+const wxCuts = new Map();     // url -> {box, file}: a year file cut down to a region's box
+const wxByYear = new Set();   // layers whose by-year chart has been asked for
+let wxCutRun = null;          // the urls being fetched, joined, while a fetch runs
+
+function wxCut(f, box){
+  const w = box.b - box.a + 1, h = box.d - box.c + 1, n = f.nx*f.ny, bands = {};
+  for(const [id, B] of Object.entries(f.bands)){
+    const out = new B.T(f.np*w*h);
+    for(let p=0;p<f.np;p++) for(let y=0;y<h;y++){
+      const o = p*n + (box.c + y)*f.nx + box.a;
+      out.set(B.data.subarray(o, o + w), (p*h + y)*w);
+    }
+    bands[id] = Object.assign({}, B, {data:out});
+  }
+  return {L:f.L, year:f.year, x0:f.x0 + box.a, y0:f.y0 + box.c, nx:w, ny:h, np:f.np, bands};
+}
+const boxIn = (i, o)=> i.a >= o.a && i.b <= o.b && i.c >= o.c && i.d <= o.d;
+
+/* The file and cell indices to use for one area set in one year, or null
+   when the year has not been fetched. */
+function wxYearCells(s, url){
+  const full = wxParsed.get(url);
+  if(full) return {files:[full], cells:s.cells, w:s.w};
+  const cut = wxCuts.get(url);
+  if(!cut || !boxIn(s.box, cut.box)) return null;
+  const nx = s.A.area.nx, cb = cut.box, cw = cb.b - cb.a + 1;
+  const cells = s.cells.map(i=> (Math.floor(i/nx) - cb.c)*cw + i % nx - cb.a);
+  return {files:[cut.file], cells, w:s.w};
+}
+
+function wxRegionYears(sets){
+  const keys = wxYearKeys(), years = keys[0] === '0' ? wx.years.map(String) : keys;
+  if(years.length < 2) return '';
+  const vals = new Float64Array(years.length).fill(NaN), need = [], unbuilt = [], part = [];
+  years.forEach((y, j)=>{
+    const parts = [];
+    let have = 0;
+    for(const s of sets){
+      const url = (wxLayer.files[s.A.id] || {})[y];
+      if(!url) continue;
+      have++;
+      const p = wxYearCells(s, url);
+      if(p) parts.push(p); else need.push({url, box:s.box});
+    }
+    if(!have){ unbuilt.push(y); return; }
+    if(parts.length < have) return;
+    /* A year still being built has its later half-months empty, and its
+       mean over the rest is not comparable with the other years. */
+    const per = wxPeriods(parts), gaps = wxCur.wt.filter((w,p)=> w && !(per[p] === per[p])).length;
+    if(gaps === wxCur.wt.filter(Boolean).length) unbuilt.push(y);
+    else{ vals[j] = wxTotal(per); if(gaps) part.push(y); }
+  });
+  if(unbuilt.length === years.length) return '';
+  if(need.length){
+    if(need.every(n=> !/^https?:/.test(n.url)) || wxByYear.has(wxLayer.id)) wxCutFetch(need);
+    else return '<p class="cap" style="margin-top:10px"><button class="btn" id="wxYearsGo">By year: load ' +
+      need.length + ' files</button> A climate year file is 5–10 MB.</p>';
+  }
+  const svg = barChart(vals, 0, j=> years.length <= 12 || j % 2 === 0 ? years[j] : null,
+    j=> years[j] + (unbuilt.includes(years[j]) ? ', not built yet' : part.includes(years[j]) ? ', part of it only' : ''),
+    'by year', null, {fmt:wxFmt, color:WX_BAR, dim:j=> part.includes(years[j])});
+  return svg + '<p class="cap">Each year on its own, ' +
+    (wxCur.mean ? wxPhrase() : wxPartLabel() ? 'in ' + wxPartLabel() : 'the whole year') + '.' +
+    (need.length ? ' <span id="wxYearStatus">Loading the years…</span>' : '') +
+    (unbuilt.length ? ' No data yet for ' + unbuilt.join(', ') + '.' : '') +
+    (part.length ? ' Faded: ' + part.join(', ') + ', with only part of the selection built so far.' : '') + '</p>';
+}
+
+async function wxCutFetch(need){
+  const key = need.map(n=> n.url).join();
+  if(wxCutRun === key) return;
+  wxCutRun = key;
+  for(const [j, n] of need.entries()){
+    const st = document.getElementById('wxYearStatus');
+    if(st) st.textContent = 'Loading year ' + (j+1) + ' of ' + need.length + '…';
+    let f;
+    try{ f = await wxGet(n.url); }
+    catch(err){
+      if(wxCutRun === key) wxCutRun = null;
+      const s2 = document.getElementById('wxYearStatus');
+      if(s2) s2.textContent = 'Could not load ' + n.url + ': ' + err.message;
+      return;
+    }
+    if(wxCutRun !== key) return;
+    wxCuts.set(n.url, {box:n.box, file:wxCut(f, n.box)});
+  }
+  wxCutRun = null;
+  regionHours();
+}
+document.getElementById('regionChart').addEventListener('click', e=>{
+  if(e.target.id === 'wxYearsGo'){ wxByYear.add(wxLayer.id); regionHours(); }
+  if(e.target.id === 'thunderGo'){ strikesForGrid = true; syncYears(); regionHours(); }
+});
 
 /* ---------- switching layers ---------- */
 async function wxBoot(){
@@ -454,7 +564,11 @@ function setLayer(id){
   layerId = l ? id : 'lightning'; wxLayer = l; wxCur = null;
   try{ localStorage.setItem(LAYER_KEY, layerId); }catch(e){}
   document.getElementById('layer').value = layerId;
-  document.querySelectorAll('[data-layers]').forEach(el=> el.hidden = (el.dataset.layers === 'grid') !== !!l);
+  /* A list of layer ids, where 'grid' means any grid layer. */
+  document.querySelectorAll('[data-layers]').forEach(el=>{
+    const ks = el.dataset.layers.split(' ');
+    el.hidden = !ks.includes(layerId) && !(l && ks.includes('grid'));
+  });
   map.closePopup();
   if(!l){
     if(map.hasLayer(wxCanvas)) map.removeLayer(wxCanvas);
