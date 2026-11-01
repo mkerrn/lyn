@@ -98,6 +98,17 @@
      "2023": "https://mkerrn.github.io/weatherdata/wx/temp-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/temp-no-mean.bin.gz"
     }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/temp-no-hours.bin.gz",
+     "label": "Temperature",
+     "unit": "°C",
+     "years": [
+      2016,
+      2017
+     ]
+    }
    }
   },
   {
@@ -144,6 +155,17 @@
      "2023": "https://mkerrn.github.io/weatherdata/wx/feels-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/feels-no-mean.bin.gz"
     }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/feels-no-hours.bin.gz",
+     "label": "Feels like",
+     "unit": "°C",
+     "years": [
+      2016,
+      2017
+     ]
+    }
    }
   },
   {
@@ -182,6 +204,17 @@
      "2022": "https://mkerrn.github.io/weatherdata/wx/wind-no-2022.bin.gz",
      "2023": "https://mkerrn.github.io/weatherdata/wx/wind-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/wind-no-mean.bin.gz"
+    }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/wind-no-hours.bin.gz",
+     "label": "Wind",
+     "unit": "m/s",
+     "years": [
+      2016,
+      2017
+     ]
     }
    }
   },
@@ -228,6 +261,17 @@
      "2022": "https://mkerrn.github.io/weatherdata/wx/humid-no-2022.bin.gz",
      "2023": "https://mkerrn.github.io/weatherdata/wx/humid-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/humid-no-mean.bin.gz"
+    }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/humid-no-hours.bin.gz",
+     "label": "Humidity",
+     "unit": "%",
+     "years": [
+      2016,
+      2017
+     ]
     }
    }
   },
@@ -321,6 +365,17 @@
      "2023": "https://mkerrn.github.io/weatherdata/wx/rain-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/rain-no-mean.bin.gz"
     }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/rain-no-hours.bin.gz",
+     "label": "Chance of rain (≥ 0.1 mm)",
+     "unit": "%",
+     "years": [
+      2016,
+      2017
+     ]
+    }
    }
   },
   {
@@ -366,6 +421,135 @@
      "2022": "https://mkerrn.github.io/weatherdata/wx/snow-no-2022.bin.gz",
      "2023": "https://mkerrn.github.io/weatherdata/wx/snow-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/snow-no-mean.bin.gz"
+    }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/snow-no-hours.bin.gz",
+     "label": "Chance of snow (≥ 0.1 mm)",
+     "unit": "%",
+     "years": [
+      2016,
+      2017
+     ]
+    }
+   }
+  },
+  {
+   "id": "sun",
+   "label": "Sun (sky)",
+   "note": "Sunshine estimated from the analysed solar radiation against a clear sky, fitted to the sunshine recorders at MET Norway's stations. It is the sky's sunshine: mountains in the way are not counted, see Sun seen from the ground for that.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017
+   ],
+   "bands": [
+    {
+     "id": "hours",
+     "label": "Sun hours a day",
+     "unit": "h",
+     "agg": "mean",
+     "ramp": "seq"
+    },
+    {
+     "id": "d1",
+     "label": "Days ≥ 1 h sun",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d3",
+     "label": "Days ≥ 3 h sun",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d6",
+     "label": "Days ≥ 6 h sun",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/sun-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/sun-no-2017.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/sun-no-mean.bin.gz"
+    }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/sun-no-hours.bin.gz",
+     "label": "Sun",
+     "unit": "min",
+     "years": [
+      2016,
+      2017
+     ]
+    }
+   }
+  },
+  {
+   "id": "sunground",
+   "label": "Sun seen from the ground",
+   "note": "The sky's sunshine, shaded by the terrain: 16 points in each cell, each with its own horizon out to 40 km. A day counts at the share of the points that saw the sun that long, so it is what to expect at a random spot in the cell, not a promise for any one spot. Cloud gaps and terrain are taken as independent within the hour.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017
+   ],
+   "bands": [
+    {
+     "id": "d15",
+     "label": "Days sun seen ≥ 15 min",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d60",
+     "label": "Days sun seen ≥ 1 h",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "d180",
+     "label": "Days sun seen ≥ 3 h",
+     "unit": "days",
+     "agg": "sum",
+     "ramp": "seq"
+    },
+    {
+     "id": "hours",
+     "label": "Hours of direct sun a day",
+     "unit": "h",
+     "agg": "mean",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/sunground-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/sunground-no-2017.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/sunground-no-mean.bin.gz"
+    }
+   },
+   "hours": {
+    "no": {
+     "url": "https://mkerrn.github.io/weatherdata/wx/sunground-no-hours.bin.gz",
+     "label": "Sun seen",
+     "unit": "min",
+     "years": [
+      2016,
+      2017
+     ]
     }
    }
   }

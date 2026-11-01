@@ -332,6 +332,11 @@ No new downloads.
       rerun of all ten years was started on 2026-11-01; it also fills
       April 2024 to December 2025 for the earlier layers. When it ends, run
       `fetch_climate.py --write-only` and push both repos.
+      2016 and 2017 were published on 2026-11-01 while the rerun went on
+      (`--write-only --layers sun,sunground,hours`, a plain push to the data
+      repo). Republish the same way as more years finish. Precipitation has no
+      hour of day: the hours cache holds the chance of rain and of snow, not
+      of either, so it needs that added and a refetch.
 - [ ] Layers *Sun (sky)* and *Sun seen from the ground*: thresholds as band
       options, and notes on what the expectation means. Check that Tromsø
       shows polar night and that a deep valley like Rjukan has far fewer days
