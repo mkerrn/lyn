@@ -185,7 +185,7 @@ async function wxRefresh(){
   wxCompute(years);
   const all = wxLayerYears(), ny = all.length, none = wxNoData();
   wxStatus.textContent = (!years.length ? (none.length ? '' : 'No years selected.')
-    : years[0] === '0' ? 'Mean of all ' + ny + ' years, ' + all[0] + '–' + all[ny-1] + '.'
+    : years[0] === '0' ? (ny === 1 ? 'The year ' + all[0] + ' only.' : 'Mean of all ' + ny + ' years, ' + all[0] + '–' + all[ny-1] + '.')
     : years.length === 1 ? 'The year ' + years[0] + ' only.'
     : 'Mean of ' + years.length + ' years: ' + years.join(', ') + '.') +
     (none.length ? (years.length ? ' ' : '') + 'No data yet for ' + none.join(', ') + '.' : '');
@@ -444,7 +444,78 @@ function wxRegion(){
     (hband ? ' ' + hbandLabel(hband) : '') + '.</p>' + svg +
     '<p class="cap">By ' + unit + (wxCur.mean ? ', the mean' : ', per year') +
     ' over the years selected.</p>' + wxRegionYears(sets) +
-    (wxLayer.id === 'thunder' ? thunderHours() : '');
+    (wxLayer.id === 'thunder' ? thunderHours() : wxHourChart(sets));
+}
+
+/* ---------- the region, hour by hour ---------- */
+/* A climate layer's mean day per month, from its one hours file (coarser
+   cells, every whole year built, in local solar time): the region's cells
+   weighted by area, the months selected by their days. Other clocks shift
+   the day by the region's mean longitude, and by summer time month by month
+   (in force from April to October, near enough). */
+const OSLO_OFF = [1,1,1,2,2,2,2,2,2,2,1,1];
+function wxHourChart(sets){
+  const head = '<div style="margin-top:10px">', H = wxLayer.hours;
+  if(!H) return '<p class="cap" style="margin-top:10px">No hour of day for this layer yet.</p>';
+  const s = seasonBins(), dr = dayRange(), mw = new Float64Array(12);
+  for(const m of s.months){
+    if(!dr){ mw[m] = MONTH_DAYS[m]; continue; }
+    for(let d=1; d<=MONTH_DAYS[m]; d++) if(inDays(dr, m*32 + d)) mw[m]++;
+  }
+  const acc = Array.from({length:12}, ()=> new Float64Array(24)), wt = Array.from({length:12}, ()=> new Float64Array(24));
+  let lonW = 0, lonS = 0, info = null;
+  for(const set of sets){
+    const h = H[set.A.id]; if(!h) continue;
+    const f = wxParsed.get(h.url);
+    if(!f){
+      wxFetch(h.url).then(()=> regionHours(), ()=>{});
+      return '<p class="cap" style="margin-top:10px">Loading the hour of day…</p>';
+    }
+    info = h;
+    /* Weights per coarse cell first: far fewer of them than region cells. */
+    const g = set.A.area, k = Math.pow(2, g.L - f.L), N = Math.pow(2, g.L), cw = new Map();
+    set.cells.forEach((i, j)=>{
+      const gx = g.x0 + i % g.nx, gy = g.y0 + Math.floor(i/g.nx);
+      const hx = Math.floor(gx/k) - f.x0, hy = Math.floor(gy/k) - f.y0;
+      if(hx < 0 || hy < 0 || hx >= f.nx || hy >= f.ny) return;
+      const c = hy*f.nx + hx;
+      cw.set(c, (cw.get(c) || 0) + set.w[j]);
+      lonS += set.w[j]*((gx + 0.5)/N*360 - 180); lonW += set.w[j];
+    });
+    const n = f.nx*f.ny;
+    for(const m of s.months){
+      if(!mw[m]) continue;
+      const B = f.bands['m' + String(m+1).padStart(2,'0')];
+      for(const [c, w] of cw) for(let hr=0; hr<24; hr++){
+        const raw = B.data[hr*n + c];
+        if(raw === B.nodata) continue;
+        acc[m][hr] += w*(raw*B.scale + B.offset); wt[m][hr] += w;
+      }
+    }
+  }
+  if(!info || !lonW) return '';
+  const tz = document.getElementById('hourTz').value, lon = lonS/lonW;
+  const vals = new Float64Array(24), vw = new Float64Array(24);
+  for(const m of s.months){
+    if(!mw[m]) continue;
+    /* Clock hour h is solar hour h − d, between two solar bars. */
+    const d = tz === 'solar' ? 0 : (tz === 'oslo' ? OSLO_OFF[m] : 0) - lon/15;
+    for(let hr=0; hr<24; hr++){
+      const x = hr - d, a = Math.floor(x), fr = x - a, i0 = ((a % 24) + 24) % 24, i1 = (i0 + 1) % 24;
+      if(!wt[m][i0] || !wt[m][i1]) continue;
+      vals[hr] += mw[m]*((1-fr)*acc[m][i0]/wt[m][i0] + fr*acc[m][i1]/wt[m][i1]); vw[hr] += mw[m];
+    }
+  }
+  for(let hr=0; hr<24; hr++) vals[hr] = vw[hr] ? vals[hr]/vw[hr] : NaN;
+  const fmt = v=> v === v ? wxRound(v) + ' ' + info.unit : '—', ys = info.years;
+  const part = wxPartLabel();
+  return head + barChart(vals, 0, hr=> hr % 3 === 0 ? hh(hr) : null, hr=> hh(hr)+':00–'+hh(hr+1)+':00',
+      info.label.toLowerCase() + ', hour of day', null, {fmt, color:WX_BAR}) +
+    '<p class="cap">' + info.label + ' by hour of ' + HOUR_LABEL[tz] + (part ? ' in ' + part : '') +
+    (ys.length > 1 ? ', the mean over ' + ys[0] + '–' + ys[ys.length-1] : ', in ' + ys[0]) +
+    ' whatever the years selected, on cells of about 8 km.' +
+    (tz === 'solar' ? '' : ' Shifted from local solar time at the region\'s mean longitude, ' + lon.toFixed(1) + '°E.') +
+    '</p></div>';
 }
 
 /* ---------- the region, year by year ---------- */

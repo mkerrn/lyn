@@ -100,7 +100,7 @@
         <button class="btn" id="rgFree">Draw freehand</button>
         <button class="btn" id="rgClear">Clear</button>
       </div>
-      <div class="row" style="margin-top:10px" data-layers="lightning thunder">
+      <div class="row" style="margin-top:10px" data-layers="lightning grid">
         <label for="hourTz">Hours in</label>
         <select id="hourTz">
           <option value="oslo" selected>Norwegian clock time</option>
@@ -109,7 +109,7 @@
         </select>
       </div>
       <div id="regionChart"></div>
-      <p class="note ex" data-layers="grid" hidden>Press a shape, then drag on the map; Esc cancels. Averages every cell whose centre is inside the outline, weighted by its area, so the figure is what a random point in the region would see. Charted by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Then by year, each of the years selected on its own, which needs a file per year. Thunderstorm days can also chart the strikes inside the region by hour of day; the climate layers have no hours yet.</p>
+      <p class="note ex" data-layers="grid" hidden>Press a shape, then drag on the map; Esc cancels. Averages every cell whose centre is inside the outline, weighted by its area, so the figure is what a random point in the region would see. Charted by the part of the year: a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer. Then by year, each of the years selected on its own, which needs a file per year. Thunderstorm days can also chart the strikes inside the region by hour of day; the climate layers chart their mean day, from all the years.</p>
       <p class="note ex" data-layers="lightning">Press a shape, then drag on the map; Esc cancels. Counts strikes inside the outline that pass every filter, by the hour they struck, by the part of the year (a bar per month with ten or more months selected, half months with four to nine, quarter months with three or fewer) and by year. Clock time follows summer time; solar time shifts each strike by its longitude, so noon is when the sun is highest there.</p>
     </section>
 

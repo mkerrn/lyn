@@ -24,8 +24,10 @@ included. The lightning-only sections of the panel hide on a grid
 layer. Temperature, feels like, wind, humidity, rain and snow are built by
 `fetch_climate.py` (below). Their files are too big for this repository and
 live in [mkerrn/weatherdata](https://github.com/mkerrn/weatherdata), served by GitHub
-Pages; `data/wx/index.json` points there. The sun layers and more are planned
-in `PLAN.md`.
+Pages; `data/wx/index.json` points there. So are the two sun layers: *Sun
+(sky)*, sunshine estimated from the analysed radiation, and *Sun seen from the
+ground*, the same shaded by the terrain, so a deep valley sees far less of it
+than the plateau above. UV and more are planned in `PLAN.md`.
 
 ## Files
 
@@ -54,8 +56,13 @@ in `PLAN.md`.
   from the elevation tiles, written to `data/wx/`.
 - `make_thunder_days.py` — the thunderstorm-days layer from the per-year
   lightning files, written to `data/wx/`.
-- `fetch_climate.py` — the temperature, feels-like, wind, humidity, rain and
-  snow layers from the MET Nordic analysis, written to `data/wx/`.
+- `fetch_climate.py` — the temperature, feels-like, wind, humidity, rain,
+  snow and sun layers, and their hour of day, from the MET Nordic analysis,
+  written to the data repository.
+- `make_horizons.py` — terrain horizons for 16 points in every land cell, for
+  *Sun seen from the ground*, cached under `cache/horizons/`.
+- `calibrate_sun.py` — fits the sunshine estimate to the sunshine recorders
+  of MET Norway's stations, through Frost.
 - `wxgrid.py` — shared helpers for the grid layers: the cell grid, half-months,
   local solar days, the MET Nordic projection, the sun's elevation, writing
   `WXG1` and updating `data/wx/index.json`.
@@ -281,8 +288,8 @@ and by year. The by-year chart reads each year's file, cut down to the
 region and let go, so the years never sit in memory together. Thunderstorm
 days fetch theirs straight away; the climate files are 5–10 MB each and wait
 for the button. Thunderstorm days can also chart the strikes in the region by
-hour of day, after downloading the lightning. The climate layers have no hours
-yet: they are stored by half-month only (see `PLAN.md`, session 3).
+hour of day, after downloading the lightning. The climate layers chart their
+mean day per month from one small file each (below).
 
 The heights for the height filter, from the terrarium tiles at zoom 8, cached
 under `cache/dem/`; about a minute:
@@ -307,7 +314,7 @@ Temperature, feels like, wind, humidity, rain and snow, from the MET Nordic
 analysis (hourly, 1 km) on thredds.met.no:
 
 ```
-python3 fetch_climate.py                                   # 2016–2025, about 9 hours
+python3 fetch_climate.py                                   # 2016–2025, about a day
 python3 fetch_climate.py --from 2019-01-01 --to 2019-01-31 --layers temp,rain
 python3 fetch_climate.py --write-only                      # rewrite the files from the cache
 ```
@@ -329,6 +336,45 @@ takes about 15 minutes a half-month, two and a half days for all ten years.
 `--write-only` (and the end of a run) writes only the years whose 24
 half-months are all in the cache, so a run can be stopped and the finished
 years published, and resumed later with the same command.
+
+The two sun layers come out of the same pass, from the hourly shortwave
+radiation. *Sun (sky)* compares each hour's radiation with a clear sky
+(Haurwitz, a little more with height): the clearer, the larger the sunny
+share of the hour, between thresholds that rise as the sun gets lower, and
+none below 3° elevation. The thresholds were fitted to the sunshine
+recorders at 20 MET Norway stations through Frost, as daily sun hours and
+the share of days past 1, 3 and 6 hours (the fit and how well it does are in
+`PLAN.md`):
+
+```
+export FROST_CLIENT_ID=...          # or put it in cache/frost_id, which is not committed
+python3 calibrate_sun.py            # about an hour of radiation the first time
+python3 calibrate_sun.py --fit-only
+```
+
+*Sun seen from the ground* adds the terrain. Every land cell has 16 points
+in a jittered 4 × 4 grid, each with its horizon at 64 azimuths out to 40 km
+over the zoom-10 elevation tiles, less the earth's curvature and refraction.
+Each quarter hour a point counts the sky's sunshine only when the sun is
+above its horizon, and a day counts at the share of the cell's points that
+saw at least 15 minutes, 1 hour or 3 hours. So it is what to expect at a
+random spot in the cell. Build the horizons once, before the climate run
+(about 5 minutes, 300 MB under `cache/horizons/`):
+
+```
+python3 make_horizons.py
+```
+
+The same pass also keeps the hour of day: a mean day per month, in local
+solar time, on level-11 cells (about 8 km), over all the whole years. That
+is one `<layer>-<area>-hours.bin.gz` per layer, a `WXG1` file with a band per
+month (`m01`–`m12`) and the 24 hours as its periods, listed under the layer's
+`hours` in the index. The region tool charts it under the year charts, and
+moves it to clock time or UTC by the region's mean longitude.
+
+Downloads go through `curl` with a deadline on the whole request: thredds
+can slow a connection to a trickle without closing it, which used to stall
+a run for hours.
 `--workers` allows up to 4 at once when the server is healthy again.
 
 - Temperature: day and night are the mean daily highest and lowest.

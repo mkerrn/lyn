@@ -71,6 +71,12 @@ def lcc_index(lat, lon):
 
 def sun_elevation(t, lat, lon):
     """Solar elevation in degrees at unix seconds t (NOAA's short series)."""
+    return sun_position(t, lat, lon)[0]
+
+
+def sun_position(t, lat, lon):
+    """Solar elevation and azimuth (from north, clockwise) in degrees at
+    unix seconds t, by NOAA's short series."""
     t = np.asarray(t, dtype=np.float64)
     s = t.astype("datetime64[s]")
     doy = (s - s.astype("datetime64[Y]")).astype(np.float64) / 86400
@@ -83,7 +89,9 @@ def sun_elevation(t, lat, lon):
     ha = np.radians(tst / 4 - 180)
     la = np.radians(lat)
     s = np.sin(la) * np.sin(decl) + np.cos(la) * np.cos(decl) * np.cos(ha)
-    return np.degrees(np.arcsin(np.clip(s, -1, 1)))
+    el = np.arcsin(np.clip(s, -1, 1))
+    az = np.arctan2(np.sin(ha), np.cos(ha) * np.sin(la) - np.tan(decl) * np.cos(la)) + np.pi
+    return np.degrees(el), np.degrees(az) % 360
 
 
 # ---------- time ----------
@@ -131,7 +139,8 @@ def update_index(area, layer, files):
             idx = json.load(f)
     idx["areas"] = [a for a in idx["areas"] if a["id"] != area["id"]] + [area]
     old = next((l for l in idx["layers"] if l["id"] == layer["id"]), None)
-    layer = dict(layer, files=dict(old["files"] if old else {}, **{area["id"]: files}))
+    # Keys another step added, like the hour-of-day files, are kept.
+    layer = dict(old or {}, **layer, files=dict(old["files"] if old else {}, **{area["id"]: files}))
     idx["layers"] = [l if l["id"] != layer["id"] else layer for l in idx["layers"]]
     if not old:
         idx["layers"].append(layer)

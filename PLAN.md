@@ -298,16 +298,46 @@ No new downloads.
 
 ### Session 3 — sun
 
-- [ ] Sky sunshine estimate and Frost calibration, as in *Sun*.
-- [ ] Horizon computation for the sample points, cached.
+- [x] Sky sunshine estimate and Frost calibration, as in *Sun*.
+      **Fit (2026-11-01, `calibrate_sun.py`).** 20 stations with hourly
+      sunshine in Frost (`sum(duration_of_sunshine PT1H)`): Blindern, Løken,
+      Fureneset, Karasjok, Gamanjunni, Gløshaugen, Tromsø, Kise, Otta, Flåm,
+      Ullensvang, Bergen–Florida (no records), Apelsvoll, Nordnesfjellet, Njøs,
+      Landvik, Kjevik, Flesland, Tjøtta, Valnesfjord. Every 6th day of
+      2018–2023, 86 000 station-hours. The model is shaded by each station's
+      own horizon before comparing, as several recorders sit in valleys. The
+      radiation hour matches the Frost hour with the same time stamp.
+      Fixed k0 and k1 fit badly: the best pair (0.35, 1.2) gave nearly three
+      times the measured December sun, as overcast light is bright next to a
+      low sun's weak clear sky. So the thresholds rise as the sun gets lower:
+      with x = 1/sin(elevation) − 1, k0 = 0.40 + 0.025·x and
+      k1 = k0 + 0.55 + 0.05·x, fitted to the daily sun hours and to the share
+      of days past 1, 3 and 6 h. Daily correlation 0.89, daily RMSE 2.1 h,
+      monthly means within 0.4 h (Dec 0.52 h modelled, 0.35 measured; Jul 6.2
+      against 6.9). Days with ≥ 1 h sun come out 62.5 % against 57.0 %
+      measured, ≥ 3 h 45.4 % against 43.7 %, ≥ 6 h 27.8 % against 28.8 %.
+      Radiation was good enough; cloud cover was not needed.
+- [x] Horizon computation for the sample points, cached.
+      `make_horizons.py`: 4.9 M points, 64 azimuths, z10 tiles (7 400 of
+      them, padded 40 km past the area), 44 s with numba. Rjukan's median
+      south horizon is 22.5°, Geiranger's 30°, Hardangervidda's 1.4°.
 - [ ] Add both sun layers to the hourly pass. Rerun the pipeline: the
       finished days in `cache/wx/` only hold the earlier layers, so the sun
       layers need the hours again. Write the pass so later layers can be added
       this way without refetching more than the variables they need.
+      Done in the code: a layer only fetches its own variables, and the hour
+      of day is cached as its own product (`cache/wx/<area>/hours/`). The
+      rerun of all ten years was started on 2026-11-01; it also fills
+      April 2024 to December 2025 for the earlier layers. When it ends, run
+      `fetch_climate.py --write-only` and push both repos.
 - [ ] Layers *Sun (sky)* and *Sun seen from the ground*: thresholds as band
       options, and notes on what the expectation means. Check that Tromsø
       shows polar night and that a deep valley like Rjukan has far fewer days
       seen than the plateau above it in winter.
+      Checked on 1–15 December 2020: no sun at all in Tromsø, Karasjok and
+      Bodø (above the horizon there only below 3°). Rjukan town saw
+      0.0 h a day from the ground against 0.7 h of sky sunshine;
+      Hardangervidda 1.4 h with 1.4 h sky; Geiranger 0.0 h against 2.8 h.
 - [ ] Hour of day for the climate layers, in the same rerun, as the region
       tool charts it for lightning. The half-month files hold no hours, so
       store a mean day per month: 24 local solar hours × 12 months, the mean
@@ -316,6 +346,10 @@ No new downloads.
       chance of at least 0.1 mm in the hour; sun minutes. About 30 MB in all,
       before gzip. In the region tool, chart it under the by-part-of-year
       chart, solar time only, and show *Hours in* for those layers.
+      Built and tested on the December 2020 half-month: 2–4 MB a file,
+      fetched when a region is drawn. The other clocks shift the solar day by
+      the region's mean longitude and summer time, so *Hours in* works as for
+      lightning.
 
 ### Session 4 — the Nordics, then Europe
 
@@ -410,3 +444,12 @@ No new downloads.
   years are published: 2016–2023 for the climate layers. A layer lists its
   `years` in the index when it has fewer than the lightning, and the map says
   which selected years have no data yet. Resume with `fetch_climate.py`.
+- 2026-11-01, session 3: the sunshine thresholds depend on the sun's
+  elevation (see the fit above), as fixed k0 and k1 gave far too much winter
+  sun. The ground sun layer's 16 points a cell come to 4.9 M over the whole
+  area, not 1.2 M, as the area is the Nordics; numba keeps that fast. The
+  hours files are per layer, with a band per month and the 24 solar hours as
+  periods, which reuses `WXG1` unchanged. Downloads go through curl:
+  thredds.met.no slows some connections to a trickle without closing them,
+  which stalled runs for hours, and only curl's `--max-time` bounds the
+  whole request.
