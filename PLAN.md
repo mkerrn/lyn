@@ -22,6 +22,7 @@ the same commit and say why in a line under *Changes to the plan* at the bottom.
 | Feels like | day = mean daily max, night = mean daily min of hourly apparent temperature | wind chill below 10 °C, Steadman apparent temperature (T, RH, wind) above |
 | Wind | mean daily max of hourly 10 m wind | MET Nordic has no gusts; say so in the panel |
 | Humidity | mean relative humidity, and mean over daylight hours | hourly RH |
+| Precipitation | mm | rain + snow, summed from their cached half-months; no days, as those need the daily total |
 | Rain | mm, days ≥ 1 mm, days ≥ 10 mm | hourly precipitation × liquid fraction |
 | Snow | mm water equivalent, days ≥ 1 mm | hourly precipitation × snow fraction: all snow ≤ 0 °C, all rain ≥ 2 °C, linear between. Note ≈ 1 cm fresh snow per mm |
 | Sun (sky) | sun hours per day, days with ≥ 1 h / ≥ 3 h / ≥ 6 h sun | sunshine estimated from shortwave radiation, see *Sun* below |
@@ -290,6 +291,7 @@ No new downloads.
       history, see its README) and `data/wx/index.json`.
 - [x] Layers: Temperature, Feels like, Wind, Humidity, Rain, Snow, as in the
       table.
+- [x] Precipitation: rain and snow added up from the cache, amount only.
 - [x] Measure the data size and act on *Size and hosting* before committing
       the data. About 40 MB a year for the six layers over the `no` area,
       roughly 450 MB with the mean files. The user chose a separate data

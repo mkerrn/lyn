@@ -58,7 +58,8 @@ MIN_SUN_EL = 3.0
 SUBSTEPS = 4           # sun positions an hour, for the low sun and the horizons
 
 # Each layer: the variables it needs, its daily stats, and how its bands are
-# made from them and stored. A band's value is the half-month mean of its
+# made from them and stored. A layer with "from" is the sum of those layers'
+# cached half-months, band by band, and is never fetched itself. A band's value is the half-month mean of its
 # stat for "mean" bands, and the half-month total for "sum" bands.
 T8 = {"dtype": 1, "scale": 0.5, "offset": -60.0, "nodata": 255}
 DAYS8 = {"dtype": 1, "scale": 0.1, "offset": 0.0, "nodata": 255}
@@ -96,6 +97,12 @@ LAYERS = {
                    "enc": {"dtype": 1, "scale": 1.0, "offset": 0.0, "nodata": 255}},
                   {"id": "rhday", "label": "Daylight", "unit": "%", "agg": "mean", "ramp": "seq",
                    "enc": {"dtype": 1, "scale": 1.0, "offset": 0.0, "nodata": 255}}]},
+    "precip": {
+        "from": ["rain", "snow"],
+        "meta": {"label": "Precipitation",
+                 "note": "All precipitation, rain and snow together, snow as mm of water. Made "
+                         "from the Rain and Snow layers, so it has no days of its own."},
+        "bands": [{"id": "mm", "label": "Amount", "unit": "mm", "agg": "sum", "ramp": "seq", "enc": MM16}]},
     "rain": {
         "vars": ["t", "pr"],
         "meta": {"label": "Rain",
@@ -463,7 +470,7 @@ def run_period(year, p, layers, cells, workers, sunc=None):
     and of the hour of day ("hours" among the layers)."""
     days = period_days(year, p)
     lon = cells["lon"]
-    names = {v for l in layers if l in LAYERS for v in LAYERS[l]["vars"]}
+    names = {v for l in layers if l in LAYERS for v in LAYERS[l].get("vars", [])}
     if "hours" in layers:
         names |= set(HVARS)
     if "pr" in names:
@@ -581,17 +588,19 @@ def write_layer(l, area, cells, out, url):
     per_year = {}
     for y in wg.YEARS:
         # Only whole years: a part-built one would skew the mean and the year charts.
-        paths = [f"{CACHE}/{area['id']}/{l}/{y}-{p:02d}.npz" for p in range(wg.NPERIODS)]
-        if not all(os.path.exists(path) for path in paths):
+        paths = [[f"{CACHE}/{area['id']}/{s}/{y}-{p:02d}.npz" for s in spec.get("from", [l])]
+                 for p in range(wg.NPERIODS)]
+        if not all(os.path.exists(path) for ps in paths for path in ps):
             continue
         vals = {b["id"]: np.full((wg.NPERIODS, len(cells["cell"])), np.nan, np.float32) for b in spec["bands"]}
-        for p, path in enumerate(paths):
-            z = np.load(path)
+        for p, ps in enumerate(paths):
+            zs = [np.load(path) for path in ps]
             for b in spec["bands"]:
-                s, c = z[b["id"]], z[b["id"] + "_n"].astype(np.float32)
+                # The sources come from the same cell-days, so their counts are the same.
+                s, c = sum(z[b["id"]] for z in zs), zs[0][b["id"] + "_n"].astype(np.float32)
                 with np.errstate(invalid="ignore", divide="ignore"):
                     # Means over the days present; totals scaled up to the whole half-month.
-                    v = s / c if b["agg"] == "mean" else s / c * int(z["ndays"])
+                    v = s / c if b["agg"] == "mean" else s / c * int(zs[0]["ndays"])
                 vals[b["id"]][p] = np.where(c > 0, v, np.nan)
         per_year[y] = vals
 
@@ -700,13 +709,15 @@ def main():
 
     if not a.write_only:
         start, end = np.datetime64(a.start), np.datetime64(a.end)
+        # A layer made from others is fetched as those.
+        fetch = list(dict.fromkeys(s for l in layers for s in LAYERS.get(l, {}).get("from", [l])))
         todo = []
         for y in wg.YEARS:
             for per in range(wg.NPERIODS):
                 d = period_days(y, per).astype("datetime64[D]")
                 if d[-1] < start or d[0] > end:
                     continue
-                need = [l for l in layers if not os.path.exists(f"{CACHE}/{a.area}/{l}/{y}-{per:02d}.npz")]
+                need = [l for l in fetch if not os.path.exists(f"{CACHE}/{a.area}/{l}/{y}-{per:02d}.npz")]
                 if need:
                     todo.append((y, per, need))
         print(f"{len(todo)} half-months to fetch")

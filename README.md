@@ -21,7 +21,7 @@ Jun–Aug ticked, thunderstorm days are days per summer), while temperatures and
 the like are averaged. So does the height band under *Height above sea
 level*: strikes and grid cells outside it are left out, region charts
 included. The lightning-only sections of the panel hide on a grid
-layer. Temperature, feels like, wind, humidity, rain and snow are built by
+layer. Temperature, feels like, wind, humidity, precipitation, rain and snow are built by
 `fetch_climate.py` (below). Their files are too big for this repository and
 live in [mkerrn/weatherdata](https://github.com/mkerrn/weatherdata), served by GitHub
 Pages; `data/wx/index.json` points there. So are the two sun layers: *Sun
@@ -56,8 +56,8 @@ than the plateau above. UV and more are planned in `PLAN.md`.
   from the elevation tiles, written to `data/wx/`.
 - `make_thunder_days.py` — the thunderstorm-days layer from the per-year
   lightning files, written to `data/wx/`.
-- `fetch_climate.py` — the temperature, feels-like, wind, humidity, rain,
-  snow and sun layers, and their hour of day, from the MET Nordic analysis,
+- `fetch_climate.py` — the temperature, feels-like, wind, humidity,
+  precipitation (rain + snow from the cache), rain, snow and sun layers, and their hour of day, from the MET Nordic analysis,
   written to the data repository.
 - `make_horizons.py` — terrain horizons for 16 points in every land cell, for
   *Sun seen from the ground*, cached under `cache/horizons/`.

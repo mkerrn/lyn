@@ -232,6 +232,45 @@
    }
   },
   {
+   "id": "precip",
+   "label": "Precipitation",
+   "note": "All precipitation, rain and snow together, snow as mm of water. Made from the Rain and Snow layers, so it has no days of its own.",
+   "source": "MET Nordic",
+   "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
+   "bands": [
+    {
+     "id": "mm",
+     "label": "Amount",
+     "unit": "mm",
+     "agg": "sum",
+     "ramp": "seq"
+    }
+   ],
+   "files": {
+    "no": {
+     "2016": "https://mkerrn.github.io/weatherdata/wx/precip-no-2016.bin.gz",
+     "2017": "https://mkerrn.github.io/weatherdata/wx/precip-no-2017.bin.gz",
+     "2018": "https://mkerrn.github.io/weatherdata/wx/precip-no-2018.bin.gz",
+     "2019": "https://mkerrn.github.io/weatherdata/wx/precip-no-2019.bin.gz",
+     "2020": "https://mkerrn.github.io/weatherdata/wx/precip-no-2020.bin.gz",
+     "2021": "https://mkerrn.github.io/weatherdata/wx/precip-no-2021.bin.gz",
+     "2022": "https://mkerrn.github.io/weatherdata/wx/precip-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/precip-no-2023.bin.gz",
+     "0": "https://mkerrn.github.io/weatherdata/wx/precip-no-mean.bin.gz"
+    }
+   }
+  },
+  {
    "id": "rain",
    "label": "Rain",
    "note": "Precipitation that falls as rain: all of it at 2 °C and above, none at 0 °C and below, a share in between. The rest is under Snow.",
