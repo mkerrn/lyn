@@ -88,9 +88,16 @@ function parseWxg(buf){
 }
 
 /* ---------- which years and which part of the year ---------- */
-/* Every year on reads the one file holding the mean over all of them. */
+/* The years the current layer has been built for; the climate layers can
+   lag behind the lightning while their download is under way. */
+const wxLayerYears = ()=> (wxLayer.years || wx.years).map(String);
+
+/* Selected years the layer has no data for yet. */
+const wxNoData = ()=> manifest ? wx.years.map(String).filter(y=> yearOn.has(y) && !wxLayerYears().includes(y)) : [];
+
+/* Every year the layer has, on, reads the one file holding their mean. */
 function wxYearKeys(){
-  const all = wx.years.map(String);
+  const all = wxLayerYears();
   const on = manifest ? all.filter(y=> yearOn.has(y)) : all;
   return on.length === all.length ? ['0'] : on;
 }
@@ -176,11 +183,12 @@ async function wxRefresh(){
     if(seq !== wxSeq) return;
   }
   wxCompute(years);
-  const ny = wx.years.length;
-  wxStatus.textContent = !years.length ? 'No years selected.'
-    : years[0] === '0' ? 'Mean of all ' + ny + ' years, ' + wx.years[0] + '–' + wx.years[ny-1] + '.'
+  const all = wxLayerYears(), ny = all.length, none = wxNoData();
+  wxStatus.textContent = (!years.length ? (none.length ? '' : 'No years selected.')
+    : years[0] === '0' ? 'Mean of all ' + ny + ' years, ' + all[0] + '–' + all[ny-1] + '.'
     : years.length === 1 ? 'The year ' + years[0] + ' only.'
-    : 'Mean of ' + years.length + ' years: ' + years.join(', ') + '.';
+    : 'Mean of ' + years.length + ' years: ' + years.join(', ') + '.') +
+    (none.length ? (years.length ? ' ' : '') + 'No data yet for ' + none.join(', ') + '.' : '');
   wxReadout(null);
   wxCanvas.redraw();
   regionHours();
@@ -476,7 +484,7 @@ function wxYearCells(s, url){
 }
 
 function wxRegionYears(sets){
-  const keys = wxYearKeys(), years = keys[0] === '0' ? wx.years.map(String) : keys;
+  const keys = wxYearKeys(), years = keys[0] === '0' ? wxLayerYears() : keys;
   if(years.length < 2) return '';
   const vals = new Float64Array(years.length).fill(NaN), need = [], unbuilt = [], part = [];
   years.forEach((y, j)=>{

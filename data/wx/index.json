@@ -60,6 +60,16 @@
    "note": "Day is the mean of the daily highest temperature, night the mean of the daily lowest, at 2 m, in local solar time.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "tmax",
@@ -85,6 +95,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/temp-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/temp-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/temp-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/temp-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/temp-no-mean.bin.gz"
     }
    }
@@ -95,6 +106,16 @@
    "note": "Hourly apparent temperature: wind chill below 10 °C, Steadman's apparent temperature from temperature, humidity and wind above. Day is the mean daily highest, night the mean daily lowest. Shade and sun are not counted.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "fmax",
@@ -120,6 +141,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/feels-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/feels-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/feels-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/feels-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/feels-no-mean.bin.gz"
     }
    }
@@ -130,6 +152,16 @@
    "note": "The mean of each day's strongest hourly wind at 10 m. MET Nordic has no gusts, so gusts run well above this.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "wmax",
@@ -148,6 +180,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/wind-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/wind-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/wind-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/wind-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/wind-no-mean.bin.gz"
     }
    }
@@ -158,6 +191,16 @@
    "note": "Relative humidity at 2 m, over the whole day and over the hours with the sun above the horizon. Polar night has no daylight hours.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "rh",
@@ -183,6 +226,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/humid-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/humid-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/humid-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/humid-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/humid-no-mean.bin.gz"
     }
    }
@@ -193,6 +237,16 @@
    "note": "Precipitation that falls as rain: all of it at 2 °C and above, none at 0 °C and below, a share in between. The rest is under Snow.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "mm",
@@ -225,6 +279,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/rain-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/rain-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/rain-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/rain-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/rain-no-mean.bin.gz"
     }
    }
@@ -235,6 +290,16 @@
    "note": "Precipitation that falls as snow, in mm of water: all of it at 0 °C and below, none at 2 °C and above. 1 mm is roughly 1 cm of fresh snow.",
    "source": "MET Nordic",
    "attribution": "MET Nordic analysis © Meteorologisk institutt",
+   "years": [
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023
+   ],
    "bands": [
     {
      "id": "mm",
@@ -260,6 +325,7 @@
      "2020": "https://mkerrn.github.io/weatherdata/wx/snow-no-2020.bin.gz",
      "2021": "https://mkerrn.github.io/weatherdata/wx/snow-no-2021.bin.gz",
      "2022": "https://mkerrn.github.io/weatherdata/wx/snow-no-2022.bin.gz",
+     "2023": "https://mkerrn.github.io/weatherdata/wx/snow-no-2023.bin.gz",
      "0": "https://mkerrn.github.io/weatherdata/wx/snow-no-mean.bin.gz"
     }
    }

@@ -12,8 +12,8 @@ point nearest its centre. Hours are turned into daily stats per cell in local
 solar time (UTC + longitude/15 h), the days into half-month sums, and only
 those are kept: cache/wx/<area>/<layer>/<year>-<period>.npz, so a stopped run
 picks up at the next missing half-month. At the end each layer is written as
-<layer>-<area>-<year>.bin.gz, one per year, plus the mean over the years, and
-listed in data/wx/index.json. The files are too big for this repository, so
+<layer>-<area>-<year>.bin.gz, one per whole year in the cache, plus the mean
+over those years, and listed in data/wx/index.json with the years it has. The files are too big for this repository, so
 they go to a clone of the data repository next to it (--out), which GitHub
 Pages serves (--url); the index points there.
 
@@ -390,13 +390,12 @@ def write_layer(l, area, cells, out, url):
     ny_, nx_ = area["ny"], area["nx"]
     per_year = {}
     for y in wg.YEARS:
+        # Only whole years: a part-built one would skew the mean and the year charts.
+        paths = [f"{CACHE}/{area['id']}/{l}/{y}-{p:02d}.npz" for p in range(wg.NPERIODS)]
+        if not all(os.path.exists(path) for path in paths):
+            continue
         vals = {b["id"]: np.full((wg.NPERIODS, len(cells["cell"])), np.nan, np.float32) for b in spec["bands"]}
-        have = False
-        for p in range(wg.NPERIODS):
-            path = f"{CACHE}/{area['id']}/{l}/{y}-{p:02d}.npz"
-            if not os.path.exists(path):
-                continue
-            have = True
+        for p, path in enumerate(paths):
             z = np.load(path)
             for b in spec["bands"]:
                 s, c = z[b["id"]], z[b["id"] + "_n"].astype(np.float32)
@@ -404,8 +403,7 @@ def write_layer(l, area, cells, out, url):
                     # Means over the days present; totals scaled up to the whole half-month.
                     v = s / c if b["agg"] == "mean" else s / c * int(z["ndays"])
                 vals[b["id"]][p] = np.where(c > 0, v, np.nan)
-        if have:
-            per_year[y] = vals
+        per_year[y] = vals
 
     def grid(v):
         g = np.full((wg.NPERIODS, ny_ * nx_), np.nan, np.float32)
@@ -427,7 +425,7 @@ def write_layer(l, area, cells, out, url):
         name = f"{l}-{area['id']}-mean.bin.gz"
         total += wg.write_wxg(f"{out}/{name}", L, area["x0"], area["y0"], nx_, ny_, 0, bands(mean))
         files["0"] = f"{url}/{name}"
-        meta = {"id": l, **spec["meta"], "source": "MET Nordic", "attribution": CREDIT,
+        meta = {"id": l, **spec["meta"], "source": "MET Nordic", "attribution": CREDIT, "years": list(per_year),
                 "bands": [{k: v for k, v in b.items() if k != "enc"} for b in spec["bands"]]}
         wg.update_index(area, meta, files)
     print(f"  {l}: {len(files)} files, {total / 1e6:.1f} MB")

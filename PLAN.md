@@ -405,3 +405,8 @@ No new downloads.
   2022-09 on, half-months took up to 2 h with 6 in flight. The fetcher now
   sends one request at a time by default, about 15 min a half-month, and
   waits on a 429 rather than counting it as a failure.
+- 2026-11-01, asked for by the user: the download was paused at April 2024
+  (thredds.met.no still throttled, about 1–2 h a half-month) and only whole
+  years are published: 2016–2023 for the climate layers. A layer lists its
+  `years` in the index when it has fewer than the lightning, and the map says
+  which selected years have no data yet. Resume with `fetch_climate.py`.

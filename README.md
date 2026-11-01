@@ -268,10 +268,13 @@ about 2 km at 65°N, fixed to the map, so a layer lines up with the strikes and
 with the region tool. The files live in `data/wx/`:
 
 - `index.json` — the years, the areas (cell range per area), and per layer its
-  bands and files.
+  bands, files, and the years it has when that is not all of them.
 - `<layer>-<area>-<year>.bin.gz` — one per year.
-- `<layer>-<area>-mean.bin.gz` — the mean over all the years, which is all the
-  map downloads while every year is on.
+- `<layer>-<area>-mean.bin.gz` — the mean over the layer's years, which is all
+  the map downloads while every one of those years is on.
+
+The climate layers only take whole years, so while their download is part way
+the map shows fewer years for them and says which selected years have no data.
 
 A region on a grid layer gives its area-weighted value, by part of the year
 and by year. The by-year chart reads each year's file, cut down to the
@@ -323,6 +326,9 @@ raw hours are never stored. The area is the one the thunderstorm days made,
 so run `make_thunder_days.py` first. It downloads one hour at a time, as MET
 asks while thredds.met.no is overloaded (status.met.no, October 2026); that
 takes about 15 minutes a half-month, two and a half days for all ten years.
+`--write-only` (and the end of a run) writes only the years whose 24
+half-months are all in the cache, so a run can be stopped and the finished
+years published, and resumed later with the same command.
 `--workers` allows up to 4 at once when the server is healthy again.
 
 - Temperature: day and night are the mean daily highest and lowest.
